@@ -43,6 +43,7 @@
                         <button id="install-btn" onclick="installApp()" class="hidden rounded-md border border-green-300 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50">Встановити</button>
                         <a href="/search" class="text-sm text-gray-700 hover:text-gray-900 md:hidden">Пошук</a>
                         {% if current_user and current_user.role == 'admin' %}
+                        <a href="/admin" class="text-sm text-gray-700 hover:text-gray-900">Адмін</a>
                         <a href="/access" class="text-sm text-gray-700 hover:text-gray-900">Доступ</a>
                         {% endif %}
                         {% if current_user %}
