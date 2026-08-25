@@ -1,0 +1,114 @@
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-gray-900">Друк етикетки</h3>
+
+    <div id="label-preview" class="flex justify-center border rounded-md p-4 bg-gray-50">
+        <img id="label-preview-img"
+             hx-get="/items/{{ item.id }}/label/preview?size=15x30"
+             hx-trigger="load"
+             hx-swap="innerHTML"
+             alt="Превʼю етикетки"
+             class="max-h-48">
+    </div>
+
+    <form id="label-form" class="space-y-3">
+        <fieldset>
+            <legend class="block text-sm font-medium text-gray-700">Розмір</legend>
+            <div class="mt-2 space-y-1">
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="radio" name="size" value="12x30" class="text-indigo-600" onchange="updatePreview()">
+                    12 × 30 мм
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="radio" name="size" value="15x30" checked class="text-indigo-600" onchange="updatePreview()">
+                    15 × 30 мм
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="radio" name="size" value="15x40" class="text-indigo-600" onchange="updatePreview()">
+                    15 × 40 мм
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="radio" name="size" value="20x30" class="text-indigo-600" onchange="updatePreview()">
+                    20 × 30 мм
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="radio" name="size" value="20x50" class="text-indigo-600" onchange="updatePreview()">
+                    20 × 50 мм
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="radio" name="size" value="custom" class="text-indigo-600" onchange="toggleCustom(); updatePreview()">
+                    Інший
+                </label>
+            </div>
+        </fieldset>
+
+        <div id="custom-dimensions" class="hidden flex gap-2">
+            <div>
+                <label class="block text-xs text-gray-500">Ширина (мм)</label>
+                <input type="number" name="custom_width" value="20" min="1" max="200"
+                       class="mt-1 block w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                       onchange="updatePreview()">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500">Висота (мм)</label>
+                <input type="number" name="custom_height" value="50" min="1" max="200"
+                       class="mt-1 block w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                       onchange="updatePreview()">
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-2">
+            <button type="button" onclick="document.getElementById('label-dialog').innerHTML = ''"
+                    class="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Закрити
+            </button>
+            <a id="label-download-btn" href="/items/{{ item.id }}/label/download?size=15x30"
+               class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                Завантажити PNG
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+function getSelectedSize() {
+    var checked = document.querySelector('input[name="size"]:checked');
+    return checked ? checked.value : '15x30';
+}
+
+function buildPreviewUrl() {
+    var size = getSelectedSize();
+    var url = '/items/{{ item.id }}/label/preview?size=' + size;
+    if (size === 'custom') {
+        var w = document.querySelector('input[name="custom_width"]').value || 20;
+        var h = document.querySelector('input[name="custom_height"]').value || 50;
+        url += '&custom_width=' + w + '&custom_height=' + h;
+    }
+    return url;
+}
+
+function buildDownloadUrl() {
+    var size = getSelectedSize();
+    var url = '/items/{{ item.id }}/label/download?size=' + size;
+    if (size === 'custom') {
+        var w = document.querySelector('input[name="custom_width"]').value || 20;
+        var h = document.querySelector('input[name="custom_height"]').value || 50;
+        url += '&custom_width=' + w + '&custom_height=' + h;
+    }
+    return url;
+}
+
+function updatePreview() {
+    var img = document.getElementById('label-preview-img');
+    img.src = buildPreviewUrl();
+    document.getElementById('label-download-btn').href = buildDownloadUrl();
+}
+
+function toggleCustom() {
+    var el = document.getElementById('custom-dimensions');
+    if (getSelectedSize() === 'custom') {
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+</script>

@@ -17,6 +17,12 @@
                         Перемістити
                     </button>
                     {% endif %}
+                    <button hx-get="/items/{{ item.id }}/label"
+                            hx-target="#label-dialog"
+                            hx-swap="innerHTML"
+                            class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        Етикетка
+                    </button>
                     {% if 'edit' in permissions %}
                     <a href="/items/{{ item.id }}/edit" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Редагувати</a>
                     {% endif %}
@@ -96,6 +102,8 @@
             {% include "items/_qr.html" %}
 
             <div id="move-modal" class="mt-4"></div>
+
+            <div id="label-dialog" class="mt-4"></div>
 
             <div class="mt-6 border-t pt-4">
                 <div class="flex items-center justify-between">

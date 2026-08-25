@@ -118,6 +118,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.auth.routes import router as auth_router
     from app.categories.routes import router as categories_router
     from app.items.routes import router as items_router
+    from app.labels.routes import router as labels_router
     from app.locations.routes import router as locations_router
     from app.media.routes import router as media_router
     from app.movements.routes import router as movements_router
@@ -134,6 +135,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(locations_router)
     app.include_router(access_router)
     app.include_router(items_router)
+    app.include_router(labels_router)
     app.include_router(media_router)
     app.include_router(movements_router)
     app.include_router(qr_router)
