@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -103,11 +103,8 @@ def _register_routes(app: FastAPI) -> None:
         return {"status": "ok"}
 
     @app.get("/", response_class=HTMLResponse)
-    async def index(request: Request) -> HTMLResponse:
-        jinja_env: Environment = app.state.jinja_env
-        template = jinja_env.get_template("index.html")
-        html = template.render(current_user=getattr(request.state, "current_user", None))
-        return HTMLResponse(content=html)
+    async def index(request: Request) -> RedirectResponse:
+        return RedirectResponse(url="/dashboard", status_code=303)
 
 
 def _register_routers(app: FastAPI) -> None:
@@ -117,6 +114,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.v1.tags import router as api_tags_router
     from app.auth.routes import router as auth_router
     from app.categories.routes import router as categories_router
+    from app.dashboard.routes import router as dashboard_router
     from app.items.routes import router as items_router
     from app.labels.routes import router as labels_router
     from app.locations.routes import router as locations_router
@@ -131,6 +129,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(categories_router)
+    app.include_router(dashboard_router)
     app.include_router(tags_router)
     app.include_router(locations_router)
     app.include_router(access_router)

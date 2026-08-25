@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Головна — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-4xl">
+        <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-bold text-gray-900">Головна</h1>
+            <div class="flex gap-2">
+                <a href="/scan" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">Сканувати QR</a>
+                <a href="/items/new" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">+ Додати</a>
+            </div>
+        </div>
+
+        <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div class="rounded-lg border bg-white p-4 shadow-sm">
+                <p class="text-sm text-gray-500">Предметів</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900">{{ stats.total_items }}</p>
+            </div>
+            <div class="rounded-lg border bg-white p-4 shadow-sm">
+                <p class="text-sm text-gray-500">Категорій</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900">{{ stats.total_categories }}</p>
+            </div>
+            <div class="rounded-lg border bg-white p-4 shadow-sm">
+                <p class="text-sm text-gray-500">Локацій</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900">{{ stats.total_locations }}</p>
+            </div>
+            <div class="rounded-lg border bg-white p-4 shadow-sm">
+                <p class="text-sm text-gray-500">Тегів</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900">{{ stats.total_tags }}</p>
+            </div>
+        </div>
+
+        {% if stats.items_without_image or stats.items_without_location or stats.items_without_category %}
+        <div class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <h2 class="text-sm font-medium text-amber-800">Зверніть увагу</h2>
+            <div class="mt-2 flex flex-wrap gap-3 text-sm text-amber-700">
+                {% if stats.items_without_image %}
+                <span>{{ stats.items_without_image }} без фото</span>
+                {% endif %}
+                {% if stats.items_without_location %}
+                <span>{{ stats.items_without_location }} без локації</span>
+                {% endif %}
+                {% if stats.items_without_category %}
+                <span>{{ stats.items_without_category }} без категорії</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="mt-8 grid gap-6 sm:grid-cols-2">
+            <div>
+                <h2 class="text-sm font-medium text-gray-500">Нещодавно додані</h2>
+                {% if recent_items %}
+                <ul class="mt-2 divide-y divide-gray-200 rounded-lg border bg-white">
+                    {% for item in recent_items %}
+                    <li><a href="/items/{{ item.id }}" class="block px-4 py-3 text-sm hover:bg-gray-50">{{ item.name }}</a></li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="mt-2 text-sm text-gray-400">Поки немає предметів.</p>
+                {% endif %}
+            </div>
+            <div>
+                <h2 class="text-sm font-medium text-gray-500">Нещодавно оновлені</h2>
+                {% if updated_items %}
+                <ul class="mt-2 divide-y divide-gray-200 rounded-lg border bg-white">
+                    {% for item in updated_items %}
+                    <li><a href="/items/{{ item.id }}" class="block px-4 py-3 text-sm hover:bg-gray-50">{{ item.name }}</a></li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="mt-2 text-sm text-gray-400">Поки немає оновлень.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
