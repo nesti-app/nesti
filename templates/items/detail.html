@@ -83,6 +83,8 @@
             </div>
             {% endif %}
 
+            {% include "items/_images.html" %}
+
             <div class="mt-6 border-t pt-4 text-xs text-gray-400">
                 Створено: {{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else '—' }}
                 {% if item.updated_at %}
