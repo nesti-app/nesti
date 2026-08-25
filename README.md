@@ -1,4 +1,8 @@
-# Nesti — Home Inventory Management System
+# Nesti — Home Inventory Catalog
+
+<p align="center">
+  <img src="static/icons/nesti.png" alt="Nesti Logo" width="200">
+</p>
 
 A modern web application for managing a personal inventory of physical objects located in a house, garage, office, workshop and other locations.
 

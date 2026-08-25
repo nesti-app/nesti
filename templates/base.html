@@ -9,7 +9,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 
+    <link rel="icon" href="/static/icons/favicon-32.png" type="image/png">
     <link rel="icon" href="/static/icons/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
     <link rel="manifest" href="/static/manifest.json">
 
     <style>
@@ -23,7 +25,10 @@
         <header class="bg-white shadow-sm">
             <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="flex h-16 items-center justify-between">
-                    <a href="/" class="text-xl font-bold text-indigo-600">Nesti</a>
+                    <a href="/" class="flex items-center gap-2 text-xl font-bold text-indigo-600">
+                        <img src="/static/icons/nesti.png" alt="Nesti" class="h-8 w-8 rounded">
+                        Nesti
+                    </a>
                     <form method="get" action="/search" class="hidden md:block flex-1 max-w-xs mx-6">
                         <input type="text" name="q" placeholder="Пошук..."
                                class="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
