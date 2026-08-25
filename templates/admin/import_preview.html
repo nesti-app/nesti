@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Імпорт — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-2xl">
+        <a href="/admin/backup" class="text-sm text-indigo-600 hover:text-indigo-500">&larr; Назад</a>
+        <h1 class="mt-4 text-2xl font-bold text-gray-900">Попередній перегляд імпорту</h1>
+
+        <div class="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-gray-900">Файл: {{ filename }}</h2>
+
+            <dl class="mt-4 space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <dt class="text-gray-500">Формат:</dt>
+                    <dd class="font-medium">{{ manifest.format }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-gray-500">Версія схеми:</dt>
+                    <dd class="font-medium">{{ manifest.schema_version }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-gray-500">Створено:</dt>
+                    <dd class="font-medium">{{ manifest.created_at }}</dd>
+                </div>
+            </dl>
+
+            <h3 class="mt-6 text-sm font-medium text-gray-700">Дані для імпорту:</h3>
+            <ul class="mt-2 divide-y divide-gray-100 text-sm">
+                {% for file, count in summary.items() %}
+                <li class="flex justify-between py-2">
+                    <span class="text-gray-600">{{ file }}</span>
+                    <span class="font-medium">{{ count }} записів</span>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <div class="mt-6 flex gap-2">
+                <a href="/admin/backup" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Скасувати
+                </a>
+                <button type="button" onclick="confirmImport()" class="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500">
+                    Підтвердити імпорт
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmImport() {
+    if (confirm("Імпорт замінить поточні дані. Продовжити?")) {
+        alert("Імпорт буде реалізовано у наступній версії.");
+    }
+}
+</script>
+{% endblock %}

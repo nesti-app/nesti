@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Бекап — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-2xl">
+        <a href="/dashboard" class="text-sm text-indigo-600 hover:text-indigo-500">&larr; Назад</a>
+        <h1 class="mt-4 text-2xl font-bold text-gray-900">Бекап та відновлення</h1>
+
+        <div class="mt-6 space-y-6">
+            <div class="rounded-lg border bg-white p-6 shadow-sm">
+                <h2 class="text-lg font-semibold text-gray-900">Експорт</h2>
+                <p class="mt-1 text-sm text-gray-600">Завантажте ZIP-архів з усіма даними інвентарю.</p>
+                <a href="/admin/backup/export"
+                   class="mt-3 inline-block rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                    Завантажити архів
+                </a>
+            </div>
+
+            <div class="rounded-lg border bg-white p-6 shadow-sm">
+                <h2 class="text-lg font-semibold text-gray-900">Імпорт</h2>
+                <p class="mt-1 text-sm text-gray-600">Завантажте ZIP-архів для імпорту даних.</p>
+                <form method="post" action="/admin/backup/import" enctype="multipart/form-data" class="mt-3">
+                    <input type="file" name="file" accept=".zip" required
+                           class="block text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100">
+                    <button type="submit" class="mt-3 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        Завантажити та перевірити
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
