@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name if item else 'Новий предмет' }} — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-xl">
+        <h1 class="mb-6 text-2xl font-bold text-gray-900">{{ 'Редагувати' if item else 'Новий' }} предмет</h1>
+        <form method="post" action="{{ '/items/' ~ item.id ~ '/edit' if item else '/items/new' }}" class="space-y-4 rounded-lg border bg-white p-6 shadow-sm">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Назва *</label>
+                <input type="text" name="name" id="name" value="{{ item.name if item else '' }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700">Опис</label>
+                <textarea name="description" id="description" rows="3" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">{{ item.description if item and item.description else '' }}</textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="category_id" class="block text-sm font-medium text-gray-700">Категорія</label>
+                    <select name="category_id" id="category_id" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        <option value="">— Немає —</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if item and item.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="location_id" class="block text-sm font-medium text-gray-700">Локація</label>
+                    <select name="location_id" id="location_id" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        <option value="">— Немає —</option>
+                        {% for loc in locations %}
+                        <option value="{{ loc.id }}" {% if item and item.location_id == loc.id %}selected{% endif %}>{{ loc.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="manufacturer" class="block text-sm font-medium text-gray-700">Виробник</label>
+                    <input type="text" name="manufacturer" id="manufacturer" value="{{ item.manufacturer if item and item.manufacturer else '' }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="model_name" class="block text-sm font-medium text-gray-700">Модель</label>
+                    <input type="text" name="model_name" id="model_name" value="{{ item.model if item and item.model else '' }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="serial_number" class="block text-sm font-medium text-gray-700">Серійний номер</label>
+                    <input type="text" name="serial_number" id="serial_number" value="{{ item.serial_number if item and item.serial_number else '' }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="sku" class="block text-sm font-medium text-gray-700">SKU</label>
+                    <input type="text" name="sku" id="sku" value="{{ item.sku if item and item.sku else '' }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label for="purchase_date" class="block text-sm font-medium text-gray-700">Дата покупки</label>
+                    <input type="date" name="purchase_date" id="purchase_date" value="{{ item.purchase_date.isoformat() if item and item.purchase_date else '' }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="purchase_price" class="block text-sm font-medium text-gray-700">Ціна</label>
+                    <input type="text" name="purchase_price" id="purchase_price" value="{{ item.purchase_price if item and item.purchase_price else '' }}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="currency" class="block text-sm font-medium text-gray-700">Валюта</label>
+                    <input type="text" name="currency" id="currency" value="{{ item.currency if item and item.currency else '' }}" maxlength="3" placeholder="UAH" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div>
+                <label for="notes" class="block text-sm font-medium text-gray-700">Нотатки</label>
+                <textarea name="notes" id="notes" rows="2" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">{{ item.notes if item and item.notes else '' }}</textarea>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">{{ 'Зберегти' if item else 'Створити' }}</button>
+                <a href="/items{% if item %}/{{ item.id }}{% endif %}" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Скасувати</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

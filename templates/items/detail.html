@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }} — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-2xl">
+        <a href="/items" class="text-sm text-indigo-600 hover:text-indigo-500">&larr; Назад</a>
+
+        <div class="mt-4 rounded-lg border bg-white p-6 shadow-sm">
+            <div class="flex items-start justify-between">
+                <h1 class="text-2xl font-bold text-gray-900">{{ item.name }}</h1>
+                <div class="flex gap-2">
+                    {% if 'edit' in permissions %}
+                    <a href="/items/{{ item.id }}/edit" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Редагувати</a>
+                    {% endif %}
+                    {% if 'delete' in permissions %}
+                    <form method="post" action="/items/{{ item.id }}/delete" onsubmit="return confirm('Видалити предмет?')">
+                        <button type="submit" class="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50">Видалити</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if item.description %}
+            <p class="mt-3 text-sm text-gray-700">{{ item.description }}</p>
+            {% endif %}
+
+            <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                {% if item.category %}
+                <div><dt class="text-gray-500">Категорія</dt><dd class="font-medium">{{ item.category.name }}</dd></div>
+                {% endif %}
+                {% if item.location %}
+                <div><dt class="text-gray-500">Локація</dt><dd class="font-medium">{{ item.location.name }}</dd></div>
+                {% endif %}
+                {% if item.parent_item %}
+                <div><dt class="text-gray-500">Батьківський предмет</dt><dd class="font-medium"><a href="/items/{{ item.parent_item.id }}" class="text-indigo-600 hover:text-indigo-500">{{ item.parent_item.name }}</a></dd></div>
+                {% endif %}
+                {% if item.manufacturer %}
+                <div><dt class="text-gray-500">Виробник</dt><dd class="font-medium">{{ item.manufacturer }}</dd></div>
+                {% endif %}
+                {% if item.model %}
+                <div><dt class="text-gray-500">Модель</dt><dd class="font-medium">{{ item.model }}</dd></div>
+                {% endif %}
+                {% if item.serial_number %}
+                <div><dt class="text-gray-500">Серійний номер</dt><dd class="font-medium">{{ item.serial_number }}</dd></div>
+                {% endif %}
+                {% if item.sku %}
+                <div><dt class="text-gray-500">SKU</dt><dd class="font-medium">{{ item.sku }}</dd></div>
+                {% endif %}
+                {% if item.purchase_date %}
+                <div><dt class="text-gray-500">Дата покупки</dt><dd class="font-medium">{{ item.purchase_date }}</dd></div>
+                {% endif %}
+                {% if item.purchase_price %}
+                <div><dt class="text-gray-500">Ціна</dt><dd class="font-medium">{{ item.purchase_price }} {{ item.currency or '' }}</dd></div>
+                {% endif %}
+            </dl>
+
+            {% if item.tags %}
+            <div class="mt-4">
+                <h2 class="text-sm font-medium text-gray-500">Теги</h2>
+                <div class="mt-1 flex flex-wrap gap-1">
+                    {% for tag in item.tags %}
+                    <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">{{ tag.name }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if item.attributes %}
+            <div class="mt-4">
+                <h2 class="text-sm font-medium text-gray-500">Характеристики</h2>
+                <dl class="mt-1 grid grid-cols-2 gap-2 text-sm">
+                    {% for attr in item.attributes %}
+                    <div><dt class="text-gray-500">{{ attr.name }}</dt><dd class="font-medium">{{ attr.value }}{% if attr.unit %} {{ attr.unit }}{% endif %}</dd></div>
+                    {% endfor %}
+                </dl>
+            </div>
+            {% endif %}
+
+            {% if item.notes %}
+            <div class="mt-4">
+                <h2 class="text-sm font-medium text-gray-500">Нотатки</h2>
+                <p class="mt-1 text-sm text-gray-700 whitespace-pre-wrap">{{ item.notes }}</p>
+            </div>
+            {% endif %}
+
+            <div class="mt-6 border-t pt-4 text-xs text-gray-400">
+                Створено: {{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else '—' }}
+                {% if item.updated_at %}
+                · Оновлено: {{ item.updated_at.strftime('%d.%m.%Y %H:%M') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
