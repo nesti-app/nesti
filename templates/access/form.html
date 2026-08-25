@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}{{ scope.name if scope else 'Новий обсяг доступу' }} — Nesti{% endblock %}
+{% block title %}{{ scope.name if scope else 'Нова область доступу' }} — Nesti{% endblock %}
 {% block content %}
 <div class="py-8">
     <div class="mx-auto max-w-xl">
-        <h1 class="mb-6 text-2xl font-bold text-gray-900">{{ 'Редагувати' if scope else 'Новий' }} обсяг доступу</h1>
+        <h1 class="mb-6 text-2xl font-bold text-gray-900">{{ 'Редагувати' if scope else 'Нова' }} область доступу</h1>
         <form method="post" action="{{ '/access/' ~ scope.id ~ '/edit' if scope else '/access/new' }}" class="space-y-4 rounded-lg border bg-white p-6 shadow-sm">
             <div>
                 <label for="name" class="block text-sm font-medium text-gray-700">Назва</label>

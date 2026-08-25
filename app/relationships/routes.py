@@ -72,6 +72,7 @@ async def relationship_list(
         item_id=item_id,
         relationships=relationships,
         all_items=all_items,
+        current_user=user,
     )
     return HTMLResponse(content=html)
 

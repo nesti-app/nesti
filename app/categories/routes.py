@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from jinja2 import Environment
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +32,12 @@ async def categories_list(
     tree = await build_tree(categories)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("categories/list.html")
-    html = template.render(categories=categories, tree=tree, total=total)
+    html = template.render(
+        categories=categories,
+        tree=tree,
+        total=total,
+        current_user=request.state.current_user,
+    )
     return HTMLResponse(content=html)
 
 
@@ -45,16 +50,17 @@ async def category_create_form(
     categories, _ = await list_categories(db)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("categories/form.html")
-    html = template.render(category=None, categories=categories)
+    html = template.render(category=None, categories=categories, current_user=user)
     return HTMLResponse(content=html)
 
 
 @router.post("/new")
 async def category_create_submit(
-    name: str,
-    slug: str,
-    description: str = "",
-    parent_category_id: uuid.UUID | None = None,
+    request: Request,
+    name: str = Form(...),
+    slug: str = Form(...),
+    description: str = Form(""),
+    parent_category_id: uuid.UUID | None = Form(None),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
@@ -77,7 +83,7 @@ async def category_detail(
     category = await get_category_by_id(db, category_id)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("categories/detail.html")
-    html = template.render(category=category)
+    html = template.render(category=category, current_user=request.state.current_user)
     return HTMLResponse(content=html)
 
 
@@ -92,17 +98,18 @@ async def category_edit_form(
     categories, _ = await list_categories(db)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("categories/form.html")
-    html = template.render(category=category, categories=categories)
+    html = template.render(category=category, categories=categories, current_user=user)
     return HTMLResponse(content=html)
 
 
 @router.post("/{category_id}/edit")
 async def category_edit_submit(
     category_id: uuid.UUID,
-    name: str,
-    slug: str,
-    description: str = "",
-    parent_category_id: uuid.UUID | None = None,
+    request: Request,
+    name: str = Form(...),
+    slug: str = Form(...),
+    description: str = Form(""),
+    parent_category_id: uuid.UUID | None = Form(None),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:

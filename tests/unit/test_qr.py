@@ -20,9 +20,12 @@ def test_build_qr_url():
 
 
 def test_build_qr_url_uses_app_url():
+    from app.config import get_settings
+
     item_id = uuid.uuid4()
     url = build_qr_url(item_id)
-    assert url.startswith("http://localhost:8000/items/")
+    app_url = get_settings().app_url
+    assert url.startswith(f"{app_url}/items/")
 
 
 def test_generate_qr_png_valid():
@@ -66,7 +69,7 @@ async def test_scan_page_requires_auth(client: AsyncClient) -> None:
     app.dependency_overrides[get_db] = lambda: mock_session
     try:
         response = await client.get("/scan", follow_redirects=False)
-        assert response.status_code in (401, 403)
+        assert response.status_code in (303, 401, 403)
     finally:
         app.dependency_overrides.pop(get_db, None)
 

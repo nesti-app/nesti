@@ -8,6 +8,7 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <link rel="icon" href="/static/icons/favicon-32.png" type="image/png">
     <link rel="icon" href="/static/icons/favicon.svg" type="image/svg+xml">
@@ -42,17 +43,33 @@
                         <a href="/scan" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">Сканувати</a>
                         <button id="install-btn" onclick="installApp()" class="hidden rounded-md border border-green-300 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50">Встановити</button>
                         <a href="/search" class="text-sm text-gray-700 hover:text-gray-900 md:hidden">Пошук</a>
-                        {% if current_user and current_user.role == 'admin' %}
-                        <a href="/admin" class="text-sm text-gray-700 hover:text-gray-900">Адмін</a>
-                        <a href="/access" class="text-sm text-gray-700 hover:text-gray-900">Доступ</a>
-                        {% endif %}
                         {% if current_user %}
-                            {% if current_user.email %}
-                            <span class="text-sm text-gray-500">{{ current_user.email }}</span>
-                            {% endif %}
-                            <form method="post" action="/auth/logout" class="inline">
-                                <button type="submit" class="text-sm text-gray-700 hover:text-gray-900">Вийти</button>
-                            </form>
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" @click.outside="open = false" class="flex items-center gap-1 rounded-full p-1 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-medium text-white">
+                                    {{ (current_user.display_name or current_user.email or 'U')[:1]|upper }}
+                                </span>
+                                <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div x-show="open" x-transition class="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
+                                <div class="px-4 py-3 border-b border-gray-100">
+                                    <p class="text-sm font-medium text-gray-900">{{ current_user.display_name or 'Користувач' }}</p>
+                                    <p class="text-xs text-gray-500 truncate">{{ current_user.email }}</p>
+                                </div>
+                                <div class="py-1">
+                                    <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Профіль</a>
+                                    {% if current_user.role == 'admin' %}
+                                    <a href="/admin" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Адміністрування</a>
+                                    <a href="/access" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Області доступу</a>
+                                    {% endif %}
+                                </div>
+                                <div class="border-t border-gray-100 py-1">
+                                    <form method="post" action="/auth/logout">
+                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Вийти</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                         {% else %}
                             <a href="/auth/login" class="text-sm text-indigo-600 hover:text-indigo-500">Увійти</a>
                         {% endif %}

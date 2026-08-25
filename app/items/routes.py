@@ -4,7 +4,7 @@ import contextlib
 import uuid
 from decimal import Decimal, InvalidOperation
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from jinja2 import Environment
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -119,19 +119,19 @@ async def item_create_form(
 @router.post("/new")
 async def item_create_submit(
     request: Request,
-    name: str,
-    description: str = "",
-    category_id: uuid.UUID | None = None,
-    location_id: uuid.UUID | None = None,
-    parent_item_id: uuid.UUID | None = None,
-    manufacturer: str = "",
-    model_name: str = "",
-    serial_number: str = "",
-    sku: str = "",
-    purchase_date: str = "",
-    purchase_price: str = "",
-    currency: str = "",
-    notes: str = "",
+    name: str = Form(...),
+    description: str = Form(""),
+    category_id: uuid.UUID | None = Form(None),
+    location_id: uuid.UUID | None = Form(None),
+    parent_item_id: uuid.UUID | None = Form(None),
+    manufacturer: str = Form(""),
+    model_name: str = Form(""),
+    serial_number: str = Form(""),
+    sku: str = Form(""),
+    purchase_date: str = Form(""),
+    purchase_price: str = Form(""),
+    currency: str = Form(""),
+    notes: str = Form(""),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
@@ -227,19 +227,19 @@ async def item_edit_form(
 async def item_edit_submit(
     item_id: uuid.UUID,
     request: Request,
-    name: str,
-    description: str = "",
-    category_id: uuid.UUID | None = None,
-    location_id: uuid.UUID | None = None,
-    parent_item_id: uuid.UUID | None = None,
-    manufacturer: str = "",
-    model_name: str = "",
-    serial_number: str = "",
-    sku: str = "",
-    purchase_date: str = "",
-    purchase_price: str = "",
-    currency: str = "",
-    notes: str = "",
+    name: str = Form(...),
+    description: str = Form(""),
+    category_id: uuid.UUID | None = Form(None),
+    location_id: uuid.UUID | None = Form(None),
+    parent_item_id: uuid.UUID | None = Form(None),
+    manufacturer: str = Form(""),
+    model_name: str = Form(""),
+    serial_number: str = Form(""),
+    sku: str = Form(""),
+    purchase_date: str = Form(""),
+    purchase_price: str = Form(""),
+    currency: str = Form(""),
+    notes: str = Form(""),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:

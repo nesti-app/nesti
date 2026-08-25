@@ -29,11 +29,28 @@ def configure_logging() -> None:
 
 
 class UserContextMiddleware(BaseHTTPMiddleware):
-    """Inject current user info into request.state for template rendering."""
+    """Inject current user into request.state for template rendering.
+
+    Loads the full User model from DB so templates can access role, email, display_name, etc.
+    """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         session = get_session(request)
-        request.state.current_user = session.user if session else None
+        request.state.current_user = None
+        if session is not None:
+            from sqlalchemy import select
+
+            from app.db.engine import _get_session_factory
+            from app.users.models import User
+
+            session_factory = _get_session_factory()
+            async with session_factory() as db:
+                result = await db.execute(
+                    select(User).where(User.supabase_id == session.user.supabase_id)
+                )
+                user = result.scalar_one_or_none()
+                if user is not None and user.is_active:
+                    request.state.current_user = user
         return await call_next(request)
 
 
@@ -75,9 +92,50 @@ def create_app() -> FastAPI:
 
 
 def _register_error_handlers(app: FastAPI) -> None:
+    def _is_html_request(request: Request) -> bool:
+        accept = request.headers.get("accept", "")
+        path = request.url.path
+        html_paths = (
+            "/dashboard", "/items", "/categories", "/tags",
+            "/locations", "/access", "/admin", "/scan",
+            "/search", "/profile",
+        )
+        return "text/html" in accept or path.startswith(html_paths)
+
     @app.exception_handler(404)
-    async def not_found_handler(request: Request, exc: Exception) -> HTMLResponse:
-        return HTMLResponse(content="<h1>404 — Not Found</h1>", status_code=404)
+    async def not_found_handler(
+        request: Request, exc: Exception
+    ) -> HTMLResponse | JSONResponse:
+        if _is_html_request(request):
+            return HTMLResponse(
+                content="<h1>404 Not Found</h1>", status_code=404
+            )
+        return JSONResponse(content={"detail": "Not Found"}, status_code=404)
+
+    @app.exception_handler(401)
+    async def unauthorized_handler(
+        request: Request, exc: Exception
+    ) -> RedirectResponse | JSONResponse:
+        if _is_html_request(request):
+            return RedirectResponse(url="/auth/login", status_code=303)
+        return JSONResponse(
+            content={"detail": "Authentication required"},
+            status_code=401,
+            headers={"WWW-Authenticate": "Cookie"},
+        )
+
+    @app.exception_handler(403)
+    async def forbidden_handler(
+        request: Request, exc: Exception
+    ) -> HTMLResponse | JSONResponse:
+        if _is_html_request(request):
+            return HTMLResponse(
+                content="<h1>403 Forbidden</h1>", status_code=403
+            )
+        return JSONResponse(
+            content={"detail": "Forbidden"},
+            status_code=403,
+        )
 
     @app.exception_handler(500)
     async def internal_error_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -90,7 +148,9 @@ def _register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(
         request: Request, exc: RequestValidationError
-    ) -> JSONResponse:
+    ) -> HTMLResponse | JSONResponse:
+        if _is_html_request(request):
+            return HTMLResponse(content="<h1>422 — Помилка валідації</h1>", status_code=422)
         return JSONResponse(
             content={"detail": exc.errors()},
             status_code=422,
@@ -109,6 +169,7 @@ def _register_routes(app: FastAPI) -> None:
 
 def _register_routers(app: FastAPI) -> None:
     from app.access.routes import router as access_router
+    from app.admin.routes import router as admin_router
     from app.api.v1.categories import router as api_categories_router
     from app.api.v1.locations import router as api_locations_router
     from app.api.v1.tags import router as api_tags_router
@@ -125,10 +186,13 @@ def _register_routers(app: FastAPI) -> None:
     from app.relationships.routes import router as relationships_router
     from app.search.routes import router as search_router
     from app.tags.routes import router as tags_router
+    from app.users.routes import profile_router as profile_router_import
     from app.users.routes import router as users_router
 
     app.include_router(auth_router)
+    app.include_router(admin_router)
     app.include_router(users_router)
+    app.include_router(profile_router_import)
     app.include_router(backup_router)
     app.include_router(categories_router)
     app.include_router(dashboard_router)

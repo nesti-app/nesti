@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from jinja2 import Environment
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +31,7 @@ async def tags_list(
     tags, total = await list_tags(db)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("tags/list.html")
-    html = template.render(tags=tags, total=total)
+    html = template.render(tags=tags, total=total, current_user=request.state.current_user)
     return HTMLResponse(content=html)
 
 
@@ -42,13 +42,14 @@ async def tag_create_form(
 ) -> Response:
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("tags/form.html")
-    html = template.render(tag=None)
+    html = template.render(tag=None, current_user=user)
     return HTMLResponse(content=html)
 
 
 @router.post("/new")
 async def tag_create_submit(
-    name: str,
+    request: Request,
+    name: str = Form(...),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
@@ -66,7 +67,7 @@ async def tag_detail(
     tag = await get_tag_by_id(db, tag_id)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("tags/detail.html")
-    html = template.render(tag=tag)
+    html = template.render(tag=tag, current_user=request.state.current_user)
     return HTMLResponse(content=html)
 
 
@@ -80,14 +81,15 @@ async def tag_edit_form(
     tag = await get_tag_by_id(db, tag_id)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("tags/form.html")
-    html = template.render(tag=tag)
+    html = template.render(tag=tag, current_user=user)
     return HTMLResponse(content=html)
 
 
 @router.post("/{tag_id}/edit")
 async def tag_edit_submit(
     tag_id: uuid.UUID,
-    name: str,
+    request: Request,
+    name: str = Form(...),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:

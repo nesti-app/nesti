@@ -49,6 +49,6 @@ async def test_protected_route_without_auth(client: AsyncClient) -> None:
     app.dependency_overrides[get_db] = lambda: mock_session
     try:
         response = await client.get("/admin/users", follow_redirects=False)
-        assert response.status_code in (401, 403)
+        assert response.status_code in (303, 401, 403)
     finally:
         app.dependency_overrides.pop(get_db, None)

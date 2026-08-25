@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from jinja2 import Environment
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +32,12 @@ async def locations_list(
     tree = await build_tree(locations)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("locations/list.html")
-    html = template.render(locations=locations, tree=tree, total=total)
+    html = template.render(
+        locations=locations,
+        tree=tree,
+        total=total,
+        current_user=request.state.current_user,
+    )
     return HTMLResponse(content=html)
 
 
@@ -45,15 +50,16 @@ async def location_create_form(
     locations, _ = await list_locations(db)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("locations/form.html")
-    html = template.render(location=None, locations=locations)
+    html = template.render(location=None, locations=locations, current_user=user)
     return HTMLResponse(content=html)
 
 
 @router.post("/new")
 async def location_create_submit(
-    name: str,
-    description: str = "",
-    parent_location_id: uuid.UUID | None = None,
+    request: Request,
+    name: str = Form(...),
+    description: str = Form(""),
+    parent_location_id: uuid.UUID | None = Form(None),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
@@ -75,7 +81,7 @@ async def location_detail(
     location = await get_location_by_id(db, location_id)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("locations/detail.html")
-    html = template.render(location=location)
+    html = template.render(location=location, current_user=request.state.current_user)
     return HTMLResponse(content=html)
 
 
@@ -90,16 +96,17 @@ async def location_edit_form(
     locations, _ = await list_locations(db)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("locations/form.html")
-    html = template.render(location=location, locations=locations)
+    html = template.render(location=location, locations=locations, current_user=user)
     return HTMLResponse(content=html)
 
 
 @router.post("/{location_id}/edit")
 async def location_edit_submit(
     location_id: uuid.UUID,
-    name: str,
-    description: str = "",
-    parent_location_id: uuid.UUID | None = None,
+    request: Request,
+    name: str = Form(...),
+    description: str = Form(""),
+    parent_location_id: uuid.UUID | None = Form(None),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:

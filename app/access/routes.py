@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from jinja2 import Environment
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,7 +43,7 @@ async def access_list(
     scopes, total = await list_scopes(db)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("access/list.html")
-    html = template.render(scopes=scopes, total=total)
+    html = template.render(scopes=scopes, total=total, current_user=request.state.current_user)
     return HTMLResponse(content=html)
 
 
@@ -54,14 +54,15 @@ async def access_create_form(
 ) -> Response:
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("access/form.html")
-    html = template.render(scope=None)
+    html = template.render(scope=None, current_user=user)
     return HTMLResponse(content=html)
 
 
 @router.post("/new")
 async def access_create_submit(
-    name: str,
-    description: str = "",
+    request: Request,
+    name: str = Form(...),
+    description: str = Form(""),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
@@ -80,7 +81,11 @@ async def access_detail(
     matched_count = await count_matching_items(db, scope_id)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("access/detail.html")
-    html = template.render(scope=scope, matched_count=matched_count)
+    html = template.render(
+        scope=scope,
+        matched_count=matched_count,
+        current_user=request.state.current_user,
+    )
     return HTMLResponse(content=html)
 
 
@@ -94,15 +99,16 @@ async def access_edit_form(
     scope = await get_scope_by_id(db, scope_id)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("access/form.html")
-    html = template.render(scope=scope)
+    html = template.render(scope=scope, current_user=user)
     return HTMLResponse(content=html)
 
 
 @router.post("/{scope_id}/edit")
 async def access_edit_submit(
     scope_id: uuid.UUID,
-    name: str,
-    description: str = "",
+    request: Request,
+    name: str = Form(...),
+    description: str = Form(""),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
@@ -124,8 +130,9 @@ async def access_delete(
 @router.post("/{scope_id}/rules")
 async def access_add_rule(
     scope_id: uuid.UUID,
-    rule_type: str,
-    rule_value: str,
+    request: Request,
+    rule_type: str = Form(...),
+    rule_value: str = Form(...),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
@@ -148,7 +155,8 @@ async def access_remove_rule(
 @router.post("/{scope_id}/permissions")
 async def access_add_permission(
     scope_id: uuid.UUID,
-    permission: str,
+    request: Request,
+    permission: str = Form(...),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
@@ -171,7 +179,8 @@ async def access_remove_permission(
 @router.post("/{scope_id}/users")
 async def access_assign_user(
     scope_id: uuid.UUID,
-    user_id: uuid.UUID,
+    request: Request,
+    user_id: uuid.UUID = Form(...),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:

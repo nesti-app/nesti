@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from jinja2 import Environment
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.engine import get_db
-from app.dependencies import require_admin
+from app.dependencies import get_current_user, require_admin
 from app.users.models import User
 from app.users.schemas import UserUpdate
 from app.users.service import (
@@ -20,6 +20,32 @@ from app.users.service import (
 )
 
 router = APIRouter(prefix="/admin/users", tags=["admin"])
+profile_router = APIRouter(tags=["profile"])
+
+
+@profile_router.get("/profile", response_class=HTMLResponse)
+async def profile_page(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    """User profile page."""
+    jinja_env: Environment = request.app.state.jinja_env
+    template = jinja_env.get_template("users/profile.html")
+    html = template.render(user=user, current_user=user)
+    return HTMLResponse(content=html)
+
+
+@profile_router.post("/profile")
+async def profile_update(
+    request: Request,
+    display_name: str = Form(""),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    """Update user profile."""
+    await update_user(db, user.id, UserUpdate(display_name=display_name.strip() or None))
+    return RedirectResponse(url="/profile", status_code=303)
 
 
 @router.get("", response_class=HTMLResponse)
@@ -54,13 +80,12 @@ async def user_detail(
 @router.post("/{user_id}/role")
 async def change_role(
     user_id: uuid.UUID,
-    role: str,
+    request: Request,
+    role: str = Form(...),
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
-) -> HTMLResponse:
+) -> RedirectResponse:
     """Admin: change user role."""
-    from fastapi.responses import RedirectResponse
-
     await update_user(db, user_id, UserUpdate(role=role))
     return RedirectResponse(url=f"/admin/users/{user_id}", status_code=303)
 
@@ -68,12 +93,11 @@ async def change_role(
 @router.post("/{user_id}/deactivate")
 async def deactivate(
     user_id: uuid.UUID,
+    request: Request,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
-) -> HTMLResponse:
+) -> RedirectResponse:
     """Admin: deactivate user."""
-    from fastapi.responses import RedirectResponse
-
     await deactivate_user(db, user_id)
     return RedirectResponse(url="/admin/users", status_code=303)
 
@@ -81,11 +105,10 @@ async def deactivate(
 @router.post("/{user_id}/reactivate")
 async def reactivate(
     user_id: uuid.UUID,
+    request: Request,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
-) -> HTMLResponse:
+) -> RedirectResponse:
     """Admin: reactivate user."""
-    from fastapi.responses import RedirectResponse
-
     await reactivate_user(db, user_id)
     return RedirectResponse(url=f"/admin/users/{user_id}", status_code=303)

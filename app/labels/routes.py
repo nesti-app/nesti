@@ -43,7 +43,7 @@ async def label_dialog(
 
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("labels/_dialog.html")
-    html = template.render(item=item)
+    html = template.render(item=item, current_user=user)
     return HTMLResponse(content=html)
 
 

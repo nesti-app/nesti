@@ -59,7 +59,7 @@ async def move_form(
 
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("movements/_move_form.html")
-    html = template.render(item=item, locations=locations)
+    html = template.render(item=item, locations=locations, current_user=user)
     return HTMLResponse(content=html)
 
 
@@ -102,5 +102,5 @@ async def movement_history(
 
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("movements/_timeline.html")
-    html = template.render(movements=movements)
+    html = template.render(movements=movements, current_user=user)
     return HTMLResponse(content=html)

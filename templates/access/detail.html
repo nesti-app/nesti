@@ -15,14 +15,14 @@
                 </div>
                 <div class="flex gap-2">
                     <a href="/access/{{ scope.id }}/edit" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Редагувати</a>
-                    <form method="post" action="/access/{{ scope.id }}/delete" onsubmit="return confirm('Видалити обсяг доступу?')">
+                    <form method="post" action="/access/{{ scope.id }}/delete" onsubmit="return confirm('Видалити область доступу?')">
                         <button type="submit" class="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50">Видалити</button>
                     </form>
                 </div>
             </div>
 
             <div class="mt-4 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
-                Цей обсяг відповідає <strong>{{ matched_count }}</strong> предмет(ам).
+                Ця область відповідає <strong>{{ matched_count }}</strong> предмет(ам).
             </div>
         </div>
 
