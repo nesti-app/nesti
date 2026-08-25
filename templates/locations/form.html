@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ location.name if location else 'Нова локація' }} — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-xl">
+        <h1 class="mb-6 text-2xl font-bold text-gray-900">{{ 'Редагувати' if location else 'Нова' }} локація</h1>
+        <form method="post" action="{{ '/locations/' ~ location.id ~ '/edit' if location else '/locations/new' }}" class="space-y-4 rounded-lg border bg-white p-6 shadow-sm">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Назва</label>
+                <input type="text" name="name" id="name" value="{{ location.name if location else '' }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700">Опис</label>
+                <textarea name="description" id="description" rows="3" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">{{ location.description if location and location.description else '' }}</textarea>
+            </div>
+            <div>
+                <label for="parent_location_id" class="block text-sm font-medium text-gray-700">Батьківська локація</label>
+                <select name="parent_location_id" id="parent_location_id" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <option value="">— Немає —</option>
+                    {% for loc in locations %}
+                        {% if not location or loc.id != location.id %}
+                        <option value="{{ loc.id }}" {% if location and location.parent_location_id == loc.id %}selected{% endif %}>{{ loc.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">{{ 'Зберегти' if location else 'Створити' }}</button>
+                <a href="/locations" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Скасувати</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

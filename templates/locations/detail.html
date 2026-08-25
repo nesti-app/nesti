@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ location.name }} — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-xl">
+        <a href="/locations" class="text-sm text-indigo-600 hover:text-indigo-500">&larr; Назад</a>
+        <div class="mt-4 rounded-lg border bg-white p-6 shadow-sm">
+            <h1 class="text-2xl font-bold text-gray-900">{{ location.name }}</h1>
+            {% if location.description %}
+            <p class="mt-3 text-sm text-gray-700">{{ location.description }}</p>
+            {% endif %}
+            {% if location.parent %}
+            <p class="mt-3 text-sm text-gray-500">Батьківська: <a href="/locations/{{ location.parent.id }}" class="text-indigo-600 hover:text-indigo-500">{{ location.parent.name }}</a></p>
+            {% endif %}
+            <div class="mt-6 flex gap-3">
+                <a href="/locations/{{ location.id }}/edit" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Редагувати</a>
+                <form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Видалити локацію?')">
+                    <button type="submit" class="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50">Видалити</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

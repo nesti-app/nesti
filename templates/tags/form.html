@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ tag.name if tag else 'Новий тег' }} — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-xl">
+        <h1 class="mb-6 text-2xl font-bold text-gray-900">{{ 'Редагувати' if tag else 'Новий' }} тег</h1>
+        <form method="post" action="{{ '/tags/' ~ tag.id ~ '/edit' if tag else '/tags/new' }}" class="space-y-4 rounded-lg border bg-white p-6 shadow-sm">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Назва</label>
+                <input type="text" name="name" id="name" value="{{ tag.name if tag else '' }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">{{ 'Зберегти' if tag else 'Створити' }}</button>
+                <a href="/tags" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Скасувати</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

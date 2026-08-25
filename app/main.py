@@ -4,7 +4,7 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -111,11 +111,26 @@ def _register_routes(app: FastAPI) -> None:
 
 
 def _register_routers(app: FastAPI) -> None:
+    from app.api.v1.categories import router as api_categories_router
+    from app.api.v1.locations import router as api_locations_router
+    from app.api.v1.tags import router as api_tags_router
     from app.auth.routes import router as auth_router
+    from app.categories.routes import router as categories_router
+    from app.locations.routes import router as locations_router
+    from app.tags.routes import router as tags_router
     from app.users.routes import router as users_router
 
     app.include_router(auth_router)
     app.include_router(users_router)
+    app.include_router(categories_router)
+    app.include_router(tags_router)
+    app.include_router(locations_router)
+
+    api_v1 = APIRouter(prefix="/api/v1")
+    api_v1.include_router(api_categories_router)
+    api_v1.include_router(api_tags_router)
+    api_v1.include_router(api_locations_router)
+    app.include_router(api_v1)
 
 
 app = create_app()

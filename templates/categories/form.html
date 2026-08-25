@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ category.name if category else 'Нова категорія' }} — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-xl">
+        <h1 class="mb-6 text-2xl font-bold text-gray-900">{{ 'Редагувати' if category else 'Нова' }} категорія</h1>
+        <form method="post" action="{{ '/categories/' ~ category.id ~ '/edit' if category else '/categories/new' }}" class="space-y-4 rounded-lg border bg-white p-6 shadow-sm">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Назва</label>
+                <input type="text" name="name" id="name" value="{{ category.name if category else '' }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label for="slug" class="block text-sm font-medium text-gray-700">Slug</label>
+                <input type="text" name="slug" id="slug" value="{{ category.slug if category else '' }}" required pattern="[a-z0-9\-]+" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700">Опис</label>
+                <textarea name="description" id="description" rows="3" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">{{ category.description if category and category.description else '' }}</textarea>
+            </div>
+            <div>
+                <label for="parent_category_id" class="block text-sm font-medium text-gray-700">Батьківська категорія</label>
+                <select name="parent_category_id" id="parent_category_id" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <option value="">— Немає —</option>
+                    {% for cat in categories %}
+                        {% if not category or cat.id != category.id %}
+                        <option value="{{ cat.id }}" {% if category and category.parent_category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">{{ 'Зберегти' if category else 'Створити' }}</button>
+                <a href="/categories" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Скасувати</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

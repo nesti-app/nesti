@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Теги — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mb-6 flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">Теги</h1>
+        <a href="/tags/new" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">+ Новий тег</a>
+    </div>
+    <div class="rounded-lg border bg-white shadow-sm p-6">
+        {% if tags %}
+        <div class="flex flex-wrap gap-2">
+            {% for tag in tags %}
+            <a href="/tags/{{ tag.id }}" class="inline-flex items-center rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50">{{ tag.name }}</a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">Немає тегів.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

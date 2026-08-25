@@ -1,0 +1,122 @@
+from __future__ import annotations
+
+import uuid
+
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from jinja2 import Environment
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.engine import get_db
+from app.dependencies import require_admin
+from app.locations.schemas import LocationCreate, LocationUpdate
+from app.locations.service import (
+    build_tree,
+    create_location,
+    delete_location,
+    get_location_by_id,
+    list_locations,
+    update_location,
+)
+from app.users.models import User
+
+router = APIRouter(prefix="/locations", tags=["locations"])
+
+
+@router.get("", response_class=HTMLResponse)
+async def locations_list(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    locations, total = await list_locations(db)
+    tree = await build_tree(locations)
+    jinja_env: Environment = request.app.state.jinja_env
+    template = jinja_env.get_template("locations/list.html")
+    html = template.render(locations=locations, tree=tree, total=total)
+    return HTMLResponse(content=html)
+
+
+@router.get("/new", response_class=None)
+async def location_create_form(
+    request: Request,
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    locations, _ = await list_locations(db)
+    jinja_env: Environment = request.app.state.jinja_env
+    template = jinja_env.get_template("locations/form.html")
+    html = template.render(location=None, locations=locations)
+    return HTMLResponse(content=html)
+
+
+@router.post("/new")
+async def location_create_submit(
+    name: str,
+    description: str = "",
+    parent_location_id: uuid.UUID | None = None,
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    data = LocationCreate(
+        name=name,
+        description=description or None,
+        parent_location_id=parent_location_id,
+    )
+    await create_location(db, data)
+    return RedirectResponse(url="/locations", status_code=303)
+
+
+@router.get("/{location_id}", response_class=HTMLResponse)
+async def location_detail(
+    request: Request,
+    location_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    location = await get_location_by_id(db, location_id)
+    jinja_env: Environment = request.app.state.jinja_env
+    template = jinja_env.get_template("locations/detail.html")
+    html = template.render(location=location)
+    return HTMLResponse(content=html)
+
+
+@router.get("/{location_id}/edit", response_class=None)
+async def location_edit_form(
+    request: Request,
+    location_id: uuid.UUID,
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    location = await get_location_by_id(db, location_id)
+    locations, _ = await list_locations(db)
+    jinja_env: Environment = request.app.state.jinja_env
+    template = jinja_env.get_template("locations/form.html")
+    html = template.render(location=location, locations=locations)
+    return HTMLResponse(content=html)
+
+
+@router.post("/{location_id}/edit")
+async def location_edit_submit(
+    location_id: uuid.UUID,
+    name: str,
+    description: str = "",
+    parent_location_id: uuid.UUID | None = None,
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    data = LocationUpdate(
+        name=name,
+        description=description or None,
+        parent_location_id=parent_location_id,
+    )
+    await update_location(db, location_id, data)
+    return RedirectResponse(url=f"/locations/{location_id}", status_code=303)
+
+
+@router.post("/{location_id}/delete")
+async def location_delete(
+    location_id: uuid.UUID,
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    await delete_location(db, location_id)
+    return RedirectResponse(url="/locations", status_code=303)
