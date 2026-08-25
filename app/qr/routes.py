@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse, Response
+from jinja2 import Environment
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.access.service import user_has_item_permission
 from app.common.exceptions import ForbiddenError
+from app.config import get_settings
 from app.db.engine import get_db
 from app.dependencies import get_current_user
 from app.items.service import get_item_by_id
@@ -58,3 +60,15 @@ async def item_qr_download(
         media_type="image/png",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/scan", response_class=HTMLResponse)
+async def scanner_page(
+    request: Request,
+    user: User = Depends(get_current_user),
+) -> HTMLResponse:
+    settings = get_settings()
+    jinja_env: Environment = request.app.state.jinja_env
+    template = jinja_env.get_template("qr/scanner.html")
+    html = template.render(app_url=settings.app_url, current_user=user)
+    return HTMLResponse(content=html)

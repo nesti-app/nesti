@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Сканувати QR — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-lg">
+        <a href="/" class="text-sm text-indigo-600 hover:text-indigo-500">&larr; Назад</a>
+        <h1 class="mt-4 text-2xl font-bold text-gray-900">Сканувати QR-код</h1>
+
+        <div id="scanner-container" class="mt-4">
+            <div id="camera-view" class="relative overflow-hidden rounded-lg bg-black">
+                <video id="video" class="w-full" autoplay playsinline muted></video>
+                <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div class="h-48 w-48 rounded-lg border-2 border-white/70" id="scan-frame"></div>
+                </div>
+            </div>
+
+            <div id="scanner-status" class="mt-3 text-center text-sm text-gray-600">
+                Запуск камери...
+            </div>
+
+            <div id="scanner-error" class="mt-3 hidden text-center text-sm text-red-600"></div>
+
+            <div id="scanner-success" class="mt-3 hidden text-center text-sm text-green-600">
+                QR-код знайдено! Перенаправлення...
+            </div>
+        </div>
+
+        <div class="mt-6">
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-gray-200"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="bg-white px-2 text-gray-500">або</span>
+                </div>
+            </div>
+
+            <form id="manual-form" class="mt-4 flex gap-2">
+                <input
+                    type="text"
+                    id="manual-input"
+                    placeholder="Введіть UUID або URL..."
+                    class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                    Відкрити
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const APP_URL = "{{ app_url }}";
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const URL_RE = new RegExp(
+        "^" + APP_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "/items/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+        "i"
+    );
+
+    function extractUUID(text) {
+        if (!text) return null;
+        text = text.trim();
+        var m = text.match(URL_RE);
+        if (m) return m[1];
+        if (UUID_RE.test(text)) return text;
+        return null;
+    }
+
+    function navigateToItem(uuid) {
+        window.location.href = "/items/" + uuid;
+    }
+
+    var video = document.getElementById("video");
+    var status = document.getElementById("scanner-status");
+    var error = document.getElementById("scanner-error");
+    var success = document.getElementById("scanner-success");
+
+    function showError(msg) {
+        error.textContent = msg;
+        error.classList.remove("hidden");
+        status.classList.add("hidden");
+    }
+
+    function showSuccess() {
+        success.classList.remove("hidden");
+        status.classList.add("hidden");
+        error.classList.add("hidden");
+    }
+
+    // Manual input
+    document.getElementById("manual-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var input = document.getElementById("manual-input").value;
+        var uuid = extractUUID(input);
+        if (uuid) {
+            navigateToItem(uuid);
+        } else {
+            showError("Невірний формат. Введіть UUID або URL предмету.");
+        }
+    });
+
+    // Camera scanning
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showError("Камера недоступна. Використовуйте ручний ввід.");
+        return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(function(stream) {
+            video.srcObject = stream;
+            status.textContent = "Наведіть камеру на QR-код...";
+
+            var canvas = document.createElement("canvas");
+            var ctx = canvas.getContext("2d");
+            var scanning = true;
+
+            function scanFrame() {
+                if (!scanning || video.readyState < video.HAVE_ENOUGH_DATA) {
+                    requestAnimationFrame(scanFrame);
+                    return;
+                }
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+
+                var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                // Try jsQR if available
+                if (typeof jsQR !== "undefined") {
+                    var code = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: "dontInvert"
+                    });
+                    if (code && code.data) {
+                        var uuid = extractUUID(code.data);
+                        if (uuid) {
+                            scanning = false;
+                            showSuccess();
+                            stream.getTracks().forEach(function(t) { t.stop(); });
+                            navigateToItem(uuid);
+                            return;
+                        }
+                    }
+                }
+
+                requestAnimationFrame(scanFrame);
+            }
+
+            video.onloadeddata = function() {
+                requestAnimationFrame(scanFrame);
+            };
+        })
+        .catch(function(err) {
+            showError("Не вдалося увімкнути камеру: " + err.message);
+        });
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
+{% endblock %}
