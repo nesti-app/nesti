@@ -123,6 +123,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.movements.routes import router as movements_router
     from app.qr.routes import router as qr_router
     from app.relationships.routes import router as relationships_router
+    from app.search.routes import router as search_router
     from app.tags.routes import router as tags_router
     from app.users.routes import router as users_router
 
@@ -137,6 +138,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(movements_router)
     app.include_router(qr_router)
     app.include_router(relationships_router)
+    app.include_router(search_router)
 
     api_v1 = APIRouter(prefix="/api/v1")
     api_v1.include_router(api_categories_router)

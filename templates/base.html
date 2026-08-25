@@ -24,6 +24,10 @@
             <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="flex h-16 items-center justify-between">
                     <a href="/" class="text-xl font-bold text-indigo-600">Nesti</a>
+                    <form method="get" action="/search" class="hidden md:block flex-1 max-w-xs mx-6">
+                        <input type="text" name="q" placeholder="Пошук..."
+                               class="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    </form>
                     <div class="flex items-center gap-4">
                         <a href="/" class="text-sm text-gray-700 hover:text-gray-900">Головна</a>
                         <a href="/categories" class="text-sm text-gray-700 hover:text-gray-900">Категорії</a>
@@ -31,6 +35,7 @@
                         <a href="/locations" class="text-sm text-gray-700 hover:text-gray-900">Локації</a>
                         <a href="/items" class="text-sm text-gray-700 hover:text-gray-900">Предмети</a>
                         <a href="/scan" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">Сканувати</a>
+                        <a href="/search" class="text-sm text-gray-700 hover:text-gray-900 md:hidden">Пошук</a>
                         {% if current_user and current_user.role == 'admin' %}
                         <a href="/access" class="text-sm text-gray-700 hover:text-gray-900">Доступ</a>
                         {% endif %}
