@@ -1,7 +1,7 @@
 {
     "name": "Nesti",
     "short_name": "Nesti",
-    "description": "Home inventory management system",
+    "description": "Nesti — Home Inventory Catalog",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#f9fafb",

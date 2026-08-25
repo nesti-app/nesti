@@ -50,7 +50,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="Nesti",
-        description="Home Inventory Management System",
+        description="Nesti — Home Inventory Catalog",
         version="0.1.0",
         lifespan=lifespan,
         docs_url="/docs" if settings.is_development else None,
