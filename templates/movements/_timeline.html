@@ -1,0 +1,55 @@
+{% if movements %}
+<div class="flow-root">
+    <ul class="-mb-8">
+        {% for m in movements %}
+        <li>
+            <div class="relative pb-8">
+                {% if not loop.last %}
+                <span class="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                {% endif %}
+                <div class="relative flex items-start space-x-3">
+                    <div class="relative">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 ring-8 ring-white">
+                            <svg class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div>
+                            <div class="text-sm">
+                                <span class="font-medium text-gray-900">
+                                    {% if m.from_location and m.to_location %}
+                                        {{ m.from_location.name }} &rarr; {{ m.to_location.name }}
+                                    {% elif m.to_location %}
+                                        &rarr; {{ m.to_location.name }}
+                                    {% elif m.from_location %}
+                                        {{ m.from_location.name }} &rarr; (видалено)
+                                    {% else %}
+                                        (без локації)
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <p class="mt-0.5 text-sm text-gray-500">
+                                {{ m.moved_at.strftime('%d.%m.%Y %H:%M') }}
+                                {% if m.moved_by_user %}
+                                    &mdash; {{ m.moved_by_user.display_name or m.moved_by_user.email }}
+                                {% endif %}
+                            </p>
+                            {% if m.reason %}
+                            <p class="mt-1 text-sm text-gray-600">Причина: {{ m.reason }}</p>
+                            {% endif %}
+                            {% if m.notes %}
+                            <p class="mt-1 text-sm text-gray-500">{{ m.notes }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+<p class="text-sm text-gray-500">Історія переміщень відсутня.</p>
+{% endif %}

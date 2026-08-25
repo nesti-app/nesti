@@ -83,6 +83,12 @@ class Item(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         lazy="selectin",
         order_by="ItemImage.sort_order",
     )
+    movements = relationship(
+        "ItemMovement",
+        back_populates="item",
+        lazy="selectin",
+        order_by="ItemMovement.moved_at.desc()",
+    )
 
     def __repr__(self) -> str:
         return f"<Item {self.name}>"
@@ -160,7 +166,7 @@ class ItemMovement(UUIDPrimaryKeyMixin, Base):
     reason: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    item = relationship("Item", lazy="selectin")
+    item = relationship("Item", back_populates="movements", lazy="selectin")
     from_location = relationship("Location", foreign_keys=[from_location_id], lazy="selectin")
     to_location = relationship("Location", foreign_keys=[to_location_id], lazy="selectin")
     moved_by_user = relationship("User", foreign_keys=[moved_by], lazy="selectin")

@@ -1,0 +1,53 @@
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-gray-900">Перемістити предмет</h3>
+
+    {% if item.location %}
+    <p class="text-sm text-gray-600">
+        Поточна локація: <span class="font-medium">{{ item.location.name }}</span>
+    </p>
+    {% else %}
+    <p class="text-sm text-gray-600">Поточна локація: не вказана</p>
+    {% endif %}
+
+    <form hx-post="/items/{{ item.id }}/move"
+          hx-target="#move-modal"
+          hx-swap="innerHTML"
+          class="space-y-3">
+
+        <div>
+            <label for="to_location_id" class="block text-sm font-medium text-gray-700">Нова локація</label>
+            <select name="to_location_id" id="to_location_id"
+                    class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <option value="">— Без локації —</option>
+                {% for loc in locations %}
+                <option value="{{ loc.id }}" {% if item.location_id and loc.id == item.location_id %}disabled{% endif %}>
+                    {{ loc.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="reason" class="block text-sm font-medium text-gray-700">Причина</label>
+            <input type="text" name="reason" id="reason" placeholder="напр. Зміна кімнати"
+                   class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+        </div>
+
+        <div>
+            <label for="notes" class="block text-sm font-medium text-gray-700">Нотатки</label>
+            <textarea name="notes" id="notes" rows="2" placeholder="Додаткова інформація..."
+                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2">
+            <button type="button" onclick="document.getElementById('move-modal').innerHTML = ''"
+                    class="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Скасувати
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                Перемістити
+            </button>
+        </div>
+    </form>
+</div>
