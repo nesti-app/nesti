@@ -26,6 +26,16 @@
                     <a href="/" class="text-xl font-bold text-indigo-600">Nesti</a>
                     <div class="flex items-center gap-4">
                         <a href="/" class="text-sm text-gray-700 hover:text-gray-900">Головна</a>
+                        {% if current_user %}
+                            {% if current_user.email %}
+                            <span class="text-sm text-gray-500">{{ current_user.email }}</span>
+                            {% endif %}
+                            <form method="post" action="/auth/logout" class="inline">
+                                <button type="submit" class="text-sm text-gray-700 hover:text-gray-900">Вийти</button>
+                            </form>
+                        {% else %}
+                            <a href="/auth/login" class="text-sm text-indigo-600 hover:text-indigo-500">Увійти</a>
+                        {% endif %}
                     </div>
                 </div>
             </nav>

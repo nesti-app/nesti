@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Вхід — Nesti{% endblock %}
+
+{% block content %}
+<div class="flex min-h-[60vh] items-center justify-center">
+    <div class="w-full max-w-md rounded-lg border bg-white p-8 shadow-sm">
+        <h1 class="mb-6 text-center text-2xl font-bold text-gray-900">Вхід до Nesti</h1>
+
+        <p class="mb-6 text-center text-sm text-gray-600">
+            Увійдіть за допомогою облікового запису Supabase.
+        </p>
+
+        <a
+            href="/auth/login/supabase"
+            class="flex w-full items-center justify-center rounded-md bg-indigo-600 px-4 py-3 text-sm font-medium text-white hover:bg-indigo-500"
+        >
+            Увійти через Supabase
+        </a>
+
+        <p class="mt-6 text-center text-xs text-gray-500">
+            Після входу ви будете перенаправлені назад до додатку.
+        </p>
+    </div>
+</div>
+{% endblock %}

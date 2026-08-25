@@ -10,7 +10,7 @@ authors = []
 dependencies = [
     "fastapi>=0.115,<1",
     "uvicorn[standard]>=0.30,<1",
-    "pydantic>=2.9,<3",
+    "pydantic[email]>=2.9,<3",
     "pydantic-settings>=2.5,<3",
     "sqlalchemy[asyncio]>=2.0,<3",
     "asyncpg>=0.30,<1",
@@ -58,6 +58,9 @@ select = [
     "UP",  # pyupgrade
     "SIM", # flake8-simplify
     "RUF", # ruff-specific
+]
+ignore = [
+    "B008",  # FastAPI Depends() in default args — standard pattern
 ]
 
 [tool.ruff.lint.isort]

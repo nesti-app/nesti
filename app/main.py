@@ -9,7 +9,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import Response
 
+from app.auth.middleware import get_session
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -23,6 +26,15 @@ def configure_logging() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+
+
+class UserContextMiddleware(BaseHTTPMiddleware):
+    """Inject current user info into request.state for template rendering."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        session = get_session(request)
+        request.state.current_user = session.user if session else None
+        return await call_next(request)
 
 
 @asynccontextmanager
@@ -51,10 +63,13 @@ def create_app() -> FastAPI:
     )
     app.state.jinja_env = templates
 
+    app.add_middleware(UserContextMiddleware)
+
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
     _register_error_handlers(app)
     _register_routes(app)
+    _register_routers(app)
 
     return app
 
@@ -83,18 +98,24 @@ def _register_error_handlers(app: FastAPI) -> None:
 
 
 def _register_routes(app: FastAPI) -> None:
-    from fastapi.responses import HTMLResponse
-
     @app.get("/health", response_class=JSONResponse)
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
     @app.get("/", response_class=HTMLResponse)
-    async def index() -> HTMLResponse:
+    async def index(request: Request) -> HTMLResponse:
         jinja_env: Environment = app.state.jinja_env
         template = jinja_env.get_template("index.html")
-        html = template.render()
+        html = template.render(current_user=getattr(request.state, "current_user", None))
         return HTMLResponse(content=html)
+
+
+def _register_routers(app: FastAPI) -> None:
+    from app.auth.routes import router as auth_router
+    from app.users.routes import router as users_router
+
+    app.include_router(auth_router)
+    app.include_router(users_router)
 
 
 app = create_app()
