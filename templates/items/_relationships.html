@@ -1,0 +1,73 @@
+{% set ns = namespace(outgoing=[], incoming=[]) %}
+{% for rel in relationships %}
+    {% if rel.source_item_id == item_id %}
+        {% set ns.outgoing = ns.outgoing + [rel] %}
+    {% else %}
+        {% set ns.incoming = ns.incoming + [rel] %}
+    {% endif %}
+{% endfor %}
+
+<div class="space-y-4">
+    {% if ns.outgoing or ns.incoming %}
+    <div class="space-y-3">
+        {% for rel in ns.outgoing %}
+        <div class="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2">
+            <div>
+                <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">{{ rel.relationship_type }}</span>
+                <a href="/items/{{ rel.target_item_id }}" class="ml-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                    {{ rel.target_item.name if rel.target_item else rel.target_item_id }}
+                </a>
+            </div>
+            <form method="post" action="/items/{{ item_id }}/relationships/{{ rel.id }}/delete" class="inline">
+                <button type="submit" class="text-xs text-red-500 hover:text-red-700">Видалити</button>
+            </form>
+        </div>
+        {% endfor %}
+
+        {% for rel in ns.incoming %}
+        <div class="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2">
+            <div>
+                <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">{{ rel.relationship_type }}</span>
+                <a href="/items/{{ rel.source_item_id }}" class="ml-2 text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                    {{ rel.source_item.name if rel.source_item else rel.source_item_id }}
+                </a>
+                <span class="text-xs text-gray-400">(зворотній зв'язок)</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-500">Зв'язків немає.</p>
+    {% endif %}
+
+    <form method="post" action="/items/{{ item_id }}/relationships" class="flex flex-wrap items-end gap-2 border-t pt-3">
+        <div>
+            <label for="target_item_id" class="block text-xs font-medium text-gray-700">Предмет</label>
+            <select name="target_item_id" id="target_item_id" required
+                    class="mt-1 block rounded-md border border-gray-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <option value="">Оберіть...</option>
+                {% for item in all_items %}
+                    {% if item.id != item_id %}
+                    <option value="{{ item.id }}">{{ item.name }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="relationship_type" class="block text-xs font-medium text-gray-700">Тип</label>
+            <select name="relationship_type" id="relationship_type" required
+                    class="mt-1 block rounded-md border border-gray-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <option value="related_to">Пов'язаний</option>
+                <option value="contains">Містить</option>
+                <option value="part_of">Частина</option>
+                <option value="accessory_of">Аксесуар</option>
+                <option value="connected_to">Підключений до</option>
+                <option value="used_with">Використовується з</option>
+                <option value="replacement_for">Заміна для</option>
+            </select>
+        </div>
+        <button type="submit" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">
+            Додати
+        </button>
+    </form>
+</div>
