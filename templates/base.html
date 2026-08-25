@@ -29,6 +29,9 @@
                         <a href="/categories" class="text-sm text-gray-700 hover:text-gray-900">Категорії</a>
                         <a href="/tags" class="text-sm text-gray-700 hover:text-gray-900">Теги</a>
                         <a href="/locations" class="text-sm text-gray-700 hover:text-gray-900">Локації</a>
+                        {% if current_user and current_user.role == 'admin' %}
+                        <a href="/access" class="text-sm text-gray-700 hover:text-gray-900">Доступ</a>
+                        {% endif %}
                         {% if current_user %}
                             {% if current_user.email %}
                             <span class="text-sm text-gray-500">{{ current_user.email }}</span>

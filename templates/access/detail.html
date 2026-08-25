@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ scope.name }} — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-2xl">
+        <a href="/access" class="text-sm text-indigo-600 hover:text-indigo-500">&larr; Назад</a>
+
+        <div class="mt-4 rounded-lg border bg-white p-6 shadow-sm">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ scope.name }}</h1>
+                    {% if scope.description %}
+                    <p class="mt-1 text-sm text-gray-500">{{ scope.description }}</p>
+                    {% endif %}
+                </div>
+                <div class="flex gap-2">
+                    <a href="/access/{{ scope.id }}/edit" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Редагувати</a>
+                    <form method="post" action="/access/{{ scope.id }}/delete" onsubmit="return confirm('Видалити обсяг доступу?')">
+                        <button type="submit" class="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50">Видалити</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="mt-4 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
+                Цей обсяг відповідає <strong>{{ matched_count }}</strong> предмет(ам).
+            </div>
+        </div>
+
+        <div class="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-gray-900">Правила</h2>
+            <p class="mt-1 text-xs text-gray-500">Правила об'єднуються логічним AND.</p>
+            {% if scope.rules %}
+            <ul class="mt-3 space-y-2">
+                {% for rule in scope.rules %}
+                <li class="flex items-center justify-between rounded-md bg-gray-50 px-3 py-2">
+                    <span class="text-sm">
+                        {% if rule.rule_type == 'location' %}📍 Локація{% elif rule.rule_type == 'category' %}📁 Категорія{% elif rule.rule_type == 'tag' %}🏷 Тег{% else %}📦 Предмет{% endif %}
+                        = <strong>{{ rule.rule_value }}</strong>
+                    </span>
+                    <form method="post" action="/access/{{ scope.id }}/rules/{{ rule.id }}/delete">
+                        <button type="submit" class="text-xs text-red-600 hover:text-red-500">✕</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="mt-3 text-sm text-gray-500">Немає правил.</p>
+            {% endif %}
+
+            <form method="post" action="/access/{{ scope.id }}/rules" class="mt-4 flex gap-2">
+                <select name="rule_type" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm">
+                    <option value="location">Локація</option>
+                    <option value="category">Категорія</option>
+                    <option value="tag">Тег</option>
+                    <option value="specific_item">Конкретний предмет</option>
+                </select>
+                <input type="text" name="rule_value" placeholder="UUID або slug" required class="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm">
+                <button type="submit" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">+</button>
+            </form>
+        </div>
+
+        <div class="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-gray-900">Дозволи</h2>
+            {% if scope.permissions %}
+            <ul class="mt-3 space-y-2">
+                {% for perm in scope.permissions %}
+                <li class="flex items-center justify-between rounded-md bg-gray-50 px-3 py-2">
+                    <span class="text-sm">
+                        {% if perm.permission == 'view' %}👁 Перегляд{% elif perm.permission == 'create' %}➕ Створення{% elif perm.permission == 'edit' %}✏️ Редагування{% elif perm.permission == 'move' %}🚚 Переміщення{% elif perm.permission == 'delete' %}🗑 Видалення{% elif perm.permission == 'manage_images' %}🖼 Керування зображеннями{% endif %}
+                    </span>
+                    <form method="post" action="/access/{{ scope.id }}/permissions/{{ perm.id }}/delete">
+                        <button type="submit" class="text-xs text-red-600 hover:text-red-500">✕</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="mt-3 text-sm text-gray-500">Немає дозволів.</p>
+            {% endif %}
+
+            <form method="post" action="/access/{{ scope.id }}/permissions" class="mt-4 flex gap-2">
+                <select name="permission" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm">
+                    <option value="view">Перегляд</option>
+                    <option value="create">Створення</option>
+                    <option value="edit">Редагування</option>
+                    <option value="move">Переміщення</option>
+                    <option value="delete">Видалення</option>
+                    <option value="manage_images">Керування зображеннями</option>
+                </select>
+                <button type="submit" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">+</button>
+            </form>
+        </div>
+
+        <div class="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-gray-900">Користувачі</h2>
+            {% if scope.users %}
+            <ul class="mt-3 space-y-2">
+                {% for su in scope.users %}
+                <li class="flex items-center justify-between rounded-md bg-gray-50 px-3 py-2">
+                    <span class="text-sm">{{ su.user_display_name or su.user_email or su.user_id }}</span>
+                    <form method="post" action="/access/{{ scope.id }}/users/{{ su.user_id }}/delete">
+                        <button type="submit" class="text-xs text-red-600 hover:text-red-500">✕</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="mt-3 text-sm text-gray-500">Немає користувачів.</p>
+            {% endif %}
+
+            <form method="post" action="/access/{{ scope.id }}/users" class="mt-4 flex gap-2">
+                <input type="text" name="user_id" placeholder="User UUID" required class="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm">
+                <button type="submit" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">+</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

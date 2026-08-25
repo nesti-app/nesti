@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Обсяги доступу — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mb-6 flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">Обсяги доступу</h1>
+        <a href="/access/new" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">+ Новий обсяг</a>
+    </div>
+    {% if scopes %}
+    <div class="grid gap-4 sm:grid-cols-2">
+        {% for scope in scopes %}
+        <a href="/access/{{ scope.id }}" class="block rounded-lg border bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+            <h2 class="text-lg font-semibold text-gray-900">{{ scope.name }}</h2>
+            {% if scope.description %}
+            <p class="mt-1 text-sm text-gray-500">{{ scope.description }}</p>
+            {% endif %}
+            <div class="mt-3 flex flex-wrap gap-1">
+                {% for rule in scope.rules %}
+                <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                    {% if rule.rule_type == 'location' %}📍{% elif rule.rule_type == 'category' %}📁{% elif rule.rule_type == 'tag' %}🏷{% else %}📦{% endif %}
+                    {{ rule.rule_value }}
+                </span>
+                {% endfor %}
+            </div>
+            <p class="mt-2 text-xs text-gray-400">{{ scope.users|length }} користувач(ів)</p>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-500">Немає обсягів доступу.</p>
+    {% endif %}
+</div>
+{% endblock %}
