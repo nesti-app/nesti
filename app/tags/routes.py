@@ -8,7 +8,7 @@ from jinja2 import Environment
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.engine import get_db
-from app.dependencies import require_admin
+from app.dependencies import get_current_user, require_admin
 from app.tags.schemas import TagCreate, TagUpdate
 from app.tags.service import (
     create_tag,
@@ -26,16 +26,17 @@ router = APIRouter(prefix="/tags", tags=["tags"])
 @router.get("", response_class=HTMLResponse)
 async def tags_list(
     request: Request,
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
     tags, total = await list_tags(db)
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("tags/list.html")
-    html = template.render(tags=tags, total=total, current_user=request.state.current_user)
+    html = template.render(tags=tags, total=total, current_user=user)
     return HTMLResponse(content=html)
 
 
-@router.get("/new", response_class=None)
+@router.get("/new", response_class=HTMLResponse)
 async def tag_create_form(
     request: Request,
     user: User = Depends(require_admin),
@@ -62,16 +63,33 @@ async def tag_create_submit(
 async def tag_detail(
     request: Request,
     tag_id: uuid.UUID,
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
     tag = await get_tag_by_id(db, tag_id)
+
+    from sqlalchemy import select
+
+    from app.items.models import Item
+    from app.tags.models import ItemTag
+
+    result = await db.execute(
+        select(Item)
+        .join(ItemTag, ItemTag.item_id == Item.id)
+        .where(ItemTag.tag_id == tag_id)
+        .order_by(Item.name)
+    )
+    items = list(result.scalars().all())
+
+    can_edit = user.role in ("admin", "editor")
+
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("tags/detail.html")
-    html = template.render(tag=tag, current_user=request.state.current_user)
+    html = template.render(tag=tag, items=items, can_edit=can_edit, current_user=user)
     return HTMLResponse(content=html)
 
 
-@router.get("/{tag_id}/edit", response_class=None)
+@router.get("/{tag_id}/edit", response_class=HTMLResponse)
 async def tag_edit_form(
     request: Request,
     tag_id: uuid.UUID,

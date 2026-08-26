@@ -16,9 +16,18 @@ class AccessScope(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    rules = relationship("AccessScopeRule", back_populates="scope", lazy="selectin")
-    permissions = relationship("AccessScopePermission", back_populates="scope", lazy="selectin")
-    users = relationship("AccessScopeUser", back_populates="scope", lazy="selectin")
+    rules = relationship(
+        "AccessScopeRule", back_populates="scope", lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    permissions = relationship(
+        "AccessScopePermission", back_populates="scope", lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    users = relationship(
+        "AccessScopeUser", back_populates="scope", lazy="selectin",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<AccessScope {self.name}>"

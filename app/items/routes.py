@@ -4,7 +4,7 @@ import contextlib
 import uuid
 from decimal import Decimal, InvalidOperation
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from jinja2 import Environment
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,7 +87,29 @@ async def items_list(
     return HTMLResponse(content=html)
 
 
-@router.get("/new", response_class=None)
+@router.get("/manufacturers/json")
+async def manufacturers_search(
+    q: str = "",
+    db: AsyncSession = Depends(get_db),
+) -> list[str]:
+    from sqlalchemy import distinct, select
+
+    from app.items.models import Item
+
+    query = (
+        select(distinct(Item.manufacturer))
+        .where(Item.manufacturer.isnot(None))
+        .where(Item.manufacturer != "")
+        .order_by(Item.manufacturer)
+    )
+    if q:
+        query = query.where(Item.manufacturer.ilike(f"%{q}%"))
+    query = query.limit(20)
+    result = await db.execute(query)
+    return [row[0] for row in result.all()]
+
+
+@router.get("/new", response_class=HTMLResponse)
 async def item_create_form(
     request: Request,
     user: User = Depends(get_current_user),
@@ -108,6 +130,7 @@ async def item_create_form(
     template = jinja_env.get_template("items/form.html")
     html = template.render(
         item=None,
+        item_tags_json=[],
         categories=categories,
         locations=locations,
         tags=tags,
@@ -132,6 +155,8 @@ async def item_create_submit(
     purchase_price: str = Form(""),
     currency: str = Form(""),
     notes: str = Form(""),
+    tag_names: str = Form(""),
+    photo: UploadFile | None = File(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
@@ -150,6 +175,16 @@ async def item_create_submit(
         with contextlib.suppress(InvalidOperation, ValueError):
             parsed_price = Decimal(purchase_price)
 
+    tag_ids = []
+    if tag_names.strip():
+        from app.tags.service import get_or_create_tag_by_name
+
+        for raw in tag_names.split(","):
+            name_clean = raw.strip()
+            if name_clean:
+                tag = await get_or_create_tag_by_name(db, name_clean)
+                tag_ids.append(tag.id)
+
     data = ItemCreate(
         name=name,
         description=description or None,
@@ -164,8 +199,24 @@ async def item_create_submit(
         purchase_price=parsed_price,
         currency=currency or None,
         notes=notes or None,
+        tag_ids=tag_ids,
     )
     item = await create_item(db, data, user_id=user.id)
+
+    if photo and photo.filename:
+        content = await photo.read()
+        if content:
+            from app.media.service import upload_image
+
+            await upload_image(
+                db,
+                item_id=item.id,
+                filename=photo.filename,
+                content_type=photo.content_type or "application/octet-stream",
+                data=content,
+                user_id=user.id,
+            )
+
     return RedirectResponse(url=f"/items/{item.id}", status_code=303)
 
 
@@ -189,11 +240,12 @@ async def item_detail(
         item=item,
         permissions=permissions,
         current_user=user,
+        request=request,
     )
     return HTMLResponse(content=html)
 
 
-@router.get("/{item_id}/edit", response_class=None)
+@router.get("/{item_id}/edit", response_class=HTMLResponse)
 async def item_edit_form(
     request: Request,
     item_id: uuid.UUID,
@@ -215,6 +267,7 @@ async def item_edit_form(
     template = jinja_env.get_template("items/form.html")
     html = template.render(
         item=item,
+        item_tags_json=[{"name": t.name} for t in item.tags],
         categories=categories,
         locations=locations,
         tags=tags,
@@ -240,6 +293,8 @@ async def item_edit_submit(
     purchase_price: str = Form(""),
     currency: str = Form(""),
     notes: str = Form(""),
+    tag_names: str = Form(""),
+    photo: UploadFile | None = File(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
@@ -258,6 +313,19 @@ async def item_edit_submit(
         with contextlib.suppress(InvalidOperation, ValueError):
             parsed_price = Decimal(purchase_price)
 
+    tag_ids = None
+    if tag_names.strip():
+        from app.tags.service import get_or_create_tag_by_name
+
+        tag_ids = []
+        for raw in tag_names.split(","):
+            name_clean = raw.strip()
+            if name_clean:
+                tag = await get_or_create_tag_by_name(db, name_clean)
+                tag_ids.append(tag.id)
+    else:
+        tag_ids = []
+
     data = ItemUpdate(
         name=name,
         description=description or None,
@@ -272,8 +340,24 @@ async def item_edit_submit(
         purchase_price=parsed_price,
         currency=currency or None,
         notes=notes or None,
+        tag_ids=tag_ids,
     )
     await update_item(db, item_id, data, user_id=user.id)
+
+    if photo and photo.filename:
+        content = await photo.read()
+        if content:
+            from app.media.service import upload_image
+
+            await upload_image(
+                db,
+                item_id=item_id,
+                filename=photo.filename,
+                content_type=photo.content_type or "application/octet-stream",
+                data=content,
+                user_id=user.id,
+            )
+
     return RedirectResponse(url=f"/items/{item_id}", status_code=303)
 
 

@@ -39,7 +39,11 @@ async def list_categories(
 
 async def get_category_by_id(db: AsyncSession, category_id: uuid.UUID) -> Category:
     """Get a category by ID."""
-    result = await db.execute(select(Category).where(Category.id == category_id))
+    result = await db.execute(
+        select(Category)
+        .where(Category.id == category_id)
+        .options(selectinload(Category.parent))
+    )
     category = result.scalar_one_or_none()
     if category is None:
         raise NotFoundError("Category not found")
@@ -48,7 +52,11 @@ async def get_category_by_id(db: AsyncSession, category_id: uuid.UUID) -> Catego
 
 async def get_category_by_slug(db: AsyncSession, slug: str) -> Category:
     """Get a category by slug."""
-    result = await db.execute(select(Category).where(Category.slug == slug))
+    result = await db.execute(
+        select(Category)
+        .where(Category.slug == slug)
+        .options(selectinload(Category.parent))
+    )
     category = result.scalar_one_or_none()
     if category is None:
         raise NotFoundError("Category not found")
@@ -57,10 +65,6 @@ async def get_category_by_slug(db: AsyncSession, slug: str) -> Category:
 
 async def create_category(db: AsyncSession, data: CategoryCreate) -> Category:
     """Create a new category."""
-    existing = await db.execute(select(Category).where(Category.slug == data.slug))
-    if existing.scalar_one_or_none() is not None:
-        raise ConflictError("Category with this slug already exists")
-
     if data.parent_category_id is not None:
         await get_category_by_id(db, data.parent_category_id)
 

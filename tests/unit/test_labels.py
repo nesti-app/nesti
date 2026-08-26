@@ -3,7 +3,8 @@ from __future__ import annotations
 import uuid
 
 from app.labels.schemas import LABEL_PRESETS, LabelRequest, LabelSize
-from app.labels.service import generate_label_png, mm_to_px
+from app.labels.service import generate_label_compact, generate_label_full, mm_to_px
+from app.qr.service import uuid_to_short_code
 
 
 def test_mm_to_px():
@@ -18,7 +19,7 @@ def test_label_size_presets():
     assert "15x40" in LABEL_PRESETS
     assert "20x30" in LABEL_PRESETS
     assert "20x50" in LABEL_PRESETS
-    assert len(LABEL_PRESETS) == 5
+    assert len(LABEL_PRESETS) == 10
 
 
 def test_label_request_preset():
@@ -42,22 +43,49 @@ def test_label_request_custom_defaults():
     assert h == 50
 
 
-def test_generate_label_png():
+def test_generate_label_compact_vertical():
     item_id = uuid.uuid4()
-    png = generate_label_png(item_id, "Test Item", 15, 30)
+    code = uuid_to_short_code(item_id)
+    png = generate_label_compact(item_id, "Test Item", code, 15, 30, orientation="vertical")
     assert len(png) > 0
     assert png[:4] == b"\x89PNG"
 
 
-def test_generate_label_png_different_sizes():
+def test_generate_label_compact_horizontal():
     item_id = uuid.uuid4()
-    small = generate_label_png(item_id, "Item", 12, 30)
-    large = generate_label_png(item_id, "Item", 20, 50)
+    code = uuid_to_short_code(item_id)
+    png = generate_label_compact(item_id, "Test Item", code, 30, 15, orientation="horizontal")
+    assert len(png) > 0
+    assert png[:4] == b"\x89PNG"
+
+
+def test_generate_label_compact_different_sizes():
+    item_id = uuid.uuid4()
+    code = uuid_to_short_code(item_id)
+    small = generate_label_compact(item_id, "Test Item", code, 12, 30)
+    large = generate_label_compact(item_id, "Test Item", code, 20, 50)
     assert len(large) > len(small)
 
 
-def test_generate_label_png_long_name():
+def test_generate_label_full_vertical():
     item_id = uuid.uuid4()
+    code = uuid_to_short_code(item_id)
+    png = generate_label_full(item_id, "Test Item", code, 15, 30, orientation="vertical")
+    assert len(png) > 0
+    assert png[:4] == b"\x89PNG"
+
+
+def test_generate_label_full_horizontal():
+    item_id = uuid.uuid4()
+    code = uuid_to_short_code(item_id)
+    png = generate_label_full(item_id, "Test Item", code, 30, 15, orientation="horizontal")
+    assert len(png) > 0
+    assert png[:4] == b"\x89PNG"
+
+
+def test_generate_label_full_long_name():
+    item_id = uuid.uuid4()
+    code = uuid_to_short_code(item_id)
     long_name = "A" * 100
-    png = generate_label_png(item_id, long_name, 15, 30)
+    png = generate_label_full(item_id, long_name, code, 15, 30)
     assert len(png) > 0

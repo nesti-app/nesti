@@ -3,13 +3,14 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, Request, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.access.service import user_has_item_permission
 from app.common.exceptions import ForbiddenError
 from app.db.engine import get_db
 from app.dependencies import get_current_user
+from app.media.models import ItemImage
 from app.media.service import (
     delete_image,
     reorder_images,
@@ -101,3 +102,33 @@ async def reorder_item_images(
 
     await reorder_images(db, item_id, image_ids)
     return RedirectResponse(url=f"/items/{item_id}", status_code=303)
+
+
+@router.get("/{image_id}/file")
+async def serve_image_file(
+    item_id: uuid.UUID,
+    image_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    from sqlalchemy import select
+
+    from app.config import get_settings
+    from supabase import create_client
+
+    result = await db.execute(
+        select(ItemImage).where(ItemImage.id == image_id, ItemImage.item_id == item_id)
+    )
+    image = result.scalar_one_or_none()
+    if image is None:
+        return Response(status_code=404)
+
+    settings = get_settings()
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+
+    try:
+        res = client.storage.from_(settings.supabase_storage_bucket).download(
+            image.storage_path
+        )
+        return Response(content=res, media_type=image.mime_type)
+    except Exception:
+        return Response(status_code=404)

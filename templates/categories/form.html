@@ -10,10 +10,6 @@
                 <input type="text" name="name" id="name" value="{{ category.name if category else '' }}" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
             </div>
             <div>
-                <label for="slug" class="block text-sm font-medium text-gray-700">Slug</label>
-                <input type="text" name="slug" id="slug" value="{{ category.slug if category else '' }}" required pattern="[a-z0-9\-]+" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-            </div>
-            <div>
                 <label for="description" class="block text-sm font-medium text-gray-700">Опис</label>
                 <textarea name="description" id="description" rows="3" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">{{ category.description if category and category.description else '' }}</textarea>
             </div>

@@ -80,6 +80,7 @@ async def backup_import(
                 "item_attributes.json",
                 "item_relationships.json",
                 "item_movements.json",
+                "item_images.json",
             ]
             missing = [n for n in required if n not in names]
             if missing:

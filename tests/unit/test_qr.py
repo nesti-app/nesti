@@ -9,28 +9,55 @@ from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db
-from app.qr.service import build_qr_url, generate_qr_png, generate_qr_svg
+from app.qr.service import (
+    build_full_url,
+    generate_qr_png_compact,
+    generate_qr_png_full,
+    generate_qr_svg_compact,
+    generate_qr_svg_full,
+    short_code_to_uuid_prefix,
+    uuid_to_short_code,
+)
 
 
-def test_build_qr_url():
+def test_uuid_to_short_code():
+    item_id = uuid.UUID("12345678-1234-4000-8000-000000000000")
+    code = uuid_to_short_code(item_id)
+    assert len(code) == 6
+    assert code.isprintable()
+
+
+def test_short_code_roundtrip():
     item_id = uuid.uuid4()
-    url = build_qr_url(item_id)
-    assert str(item_id) in url
-    assert url.endswith(f"/items/{item_id}")
+    code = uuid_to_short_code(item_id)
+    prefix = short_code_to_uuid_prefix(code)
+    assert item_id.hex.startswith(prefix)
 
 
-def test_build_qr_url_uses_app_url():
-    from app.config import get_settings
+def test_short_code_is_url_safe():
+    import re
+    url_safe_re = re.compile(r"^[0-9A-Za-z_-]+$")
+    for _ in range(100):
+        code = uuid_to_short_code(uuid.uuid4())
+        assert len(code) == 6
+        assert url_safe_re.match(code)
 
+
+def test_build_full_url():
     item_id = uuid.uuid4()
-    url = build_qr_url(item_id)
-    app_url = get_settings().app_url
-    assert url.startswith(f"{app_url}/items/")
+    url = build_full_url(item_id, "http://localhost:8001")
+    assert url == f"http://localhost:8001/items/{item_id}"
 
 
-def test_generate_qr_png_valid():
+def test_build_full_url_trailing_slash():
     item_id = uuid.uuid4()
-    png_bytes = generate_qr_png(item_id)
+    url = build_full_url(item_id, "http://localhost:8001/")
+    assert url == f"http://localhost:8001/items/{item_id}"
+
+
+def test_generate_qr_png_compact_valid():
+    item_id = uuid.uuid4()
+    png_bytes = generate_qr_png_compact(item_id)
     assert len(png_bytes) > 0
     img = Image.open(io.BytesIO(png_bytes))
     assert img.format == "PNG"
@@ -38,28 +65,50 @@ def test_generate_qr_png_valid():
     assert img.size[1] > 0
 
 
+def test_generate_qr_png_full_valid():
+    item_id = uuid.uuid4()
+    png_bytes = generate_qr_png_full(item_id, "http://localhost:8001")
+    assert len(png_bytes) > 0
+    img = Image.open(io.BytesIO(png_bytes))
+    assert img.format == "PNG"
+
+
+def test_generate_qr_compact_smaller_than_full():
+    item_id = uuid.uuid4()
+    compact = generate_qr_png_compact(item_id)
+    full = generate_qr_png_full(item_id, "http://localhost:8001")
+    assert len(compact) < len(full)
+
+
 def test_generate_qr_deterministic():
     item_id = uuid.uuid4()
-    png1 = generate_qr_png(item_id)
-    png2 = generate_qr_png(item_id)
+    png1 = generate_qr_png_compact(item_id)
+    png2 = generate_qr_png_compact(item_id)
     assert png1 == png2
 
 
 def test_generate_qr_different_items():
     id1 = uuid.uuid4()
     id2 = uuid.uuid4()
-    png1 = generate_qr_png(id1)
-    png2 = generate_qr_png(id2)
+    png1 = generate_qr_png_compact(id1)
+    png2 = generate_qr_png_compact(id2)
     assert png1 != png2
 
 
-def test_generate_qr_svg_valid():
+def test_generate_qr_svg_compact_valid():
     item_id = uuid.uuid4()
-    svg_bytes = generate_qr_svg(item_id)
+    svg_bytes = generate_qr_svg_compact(item_id)
     assert len(svg_bytes) > 0
     svg_str = svg_bytes.decode("utf-8")
     assert "<svg" in svg_str
-    assert "qr-path" in svg_str
+
+
+def test_generate_qr_svg_full_valid():
+    item_id = uuid.uuid4()
+    svg_bytes = generate_qr_svg_full(item_id, "http://localhost:8001")
+    assert len(svg_bytes) > 0
+    svg_str = svg_bytes.decode("utf-8")
+    assert "<svg" in svg_str
 
 
 async def test_scan_page_requires_auth(client: AsyncClient) -> None:

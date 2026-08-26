@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.common.exceptions import ConflictError, NotFoundError
 from app.locations.models import Location
@@ -29,7 +30,11 @@ async def list_locations(
 
 async def get_location_by_id(db: AsyncSession, location_id: uuid.UUID) -> Location:
     """Get a location by ID."""
-    result = await db.execute(select(Location).where(Location.id == location_id))
+    result = await db.execute(
+        select(Location)
+        .where(Location.id == location_id)
+        .options(selectinload(Location.parent))
+    )
     location = result.scalar_one_or_none()
     if location is None:
         raise NotFoundError("Location not found")

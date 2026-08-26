@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ code or 404 }} — Nesti{% endblock %}
+{% block content %}
+<div class="flex min-h-[50vh] flex-col items-center justify-center text-center">
+    <p class="text-7xl font-bold text-indigo-600">{{ code or 404 }}</p>
+    <h1 class="mt-4 text-xl font-semibold text-gray-900">
+        {% if code == 403 %}
+            Доступ заборонено
+        {% elif code == 401 %}
+            Потрібна авторизація
+        {% elif code == 500 %}
+            Помилка сервера
+        {% else %}
+            Сторінку не знайдено
+        {% endif %}
+    </h1>
+    <p class="mt-2 text-sm text-gray-500">{{ message or 'Щось пішло не так. Спробуйте повернутися на головну.' }}</p>
+    <a href="/" class="mt-6 inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+        На головну
+    </a>
+</div>
+{% endblock %}

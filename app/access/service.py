@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.access.models import (
     AccessScope,
@@ -234,13 +235,13 @@ async def _resolve_rule_value(
     if rule_type == "location":
         from app.locations.models import Location
 
-        result = await db.execute(select(Location.id).where(Location.slug == rule_value))
+        result = await db.execute(select(Location.id).where(Location.name == rule_value))
         return result.scalar_one_or_none()
 
     if rule_type == "category":
         from app.categories.models import Category
 
-        result = await db.execute(select(Category.id).where(Category.slug == rule_value))
+        result = await db.execute(select(Category.id).where(Category.name == rule_value))
         return result.scalar_one_or_none()
 
     return None
@@ -289,6 +290,63 @@ async def count_matching_items(
     query = select(func.count()).select_from(Item).where(and_(*conditions))
     result = await db.execute(query)
     return result.scalar_one()
+
+
+async def resolve_rule_display(
+    db: AsyncSession,
+    rule_type: str,
+    rule_value: str,
+) -> str:
+    """Resolve a rule value to a human-readable display string."""
+    if rule_type == "location":
+        from app.locations.models import Location
+
+        result = await db.execute(
+            select(Location)
+            .options(selectinload(Location.parent))
+            .where(Location.id == rule_value)
+        )
+        loc = result.scalar_one_or_none()
+        if loc:
+            if loc.parent:
+                return f"{loc.parent.name} → {loc.name}"
+            return loc.name
+        return rule_value
+
+    if rule_type == "category":
+        from app.categories.models import Category
+
+        result = await db.execute(
+            select(Category)
+            .options(selectinload(Category.parent))
+            .where(Category.id == rule_value)
+        )
+        cat = result.scalar_one_or_none()
+        if cat:
+            if cat.parent:
+                return f"{cat.parent.name} → {cat.name}"
+            return cat.name
+        return rule_value
+
+    if rule_type == "tag":
+        from app.tags.models import Tag
+
+        result = await db.execute(select(Tag).where(Tag.id == rule_value))
+        tag = result.scalar_one_or_none()
+        if tag:
+            return tag.name
+        return rule_value
+
+    if rule_type == "specific_item":
+        from app.items.models import Item
+
+        result = await db.execute(select(Item).where(Item.id == rule_value))
+        item = result.scalar_one_or_none()
+        if item:
+            return f"{item.name} ({item.short_code})"
+        return rule_value
+
+    return rule_value
 
 
 async def evaluate_user_scopes(

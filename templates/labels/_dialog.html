@@ -3,36 +3,62 @@
 
     <div id="label-preview" class="flex justify-center border rounded-md p-4 bg-gray-50">
         <img id="label-preview-img"
-             hx-get="/items/{{ item.id }}/label/preview?size=15x30"
-             hx-trigger="load"
-             hx-swap="innerHTML"
+             src="/items/{{ item.id }}/label/preview?size=30x15&label_type=compact&orientation=horizontal"
              alt="Превʼю етикетки"
              class="max-h-48">
     </div>
 
     <form id="label-form" class="space-y-3">
         <fieldset>
-            <legend class="block text-sm font-medium text-gray-700">Розмір</legend>
+            <legend class="block text-sm font-medium text-gray-700">Тип етикетки</legend>
             <div class="mt-2 space-y-1">
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="size" value="12x30" class="text-indigo-600" onchange="updatePreview()">
-                    12 × 30 мм
+                    <input type="radio" name="label_type" value="compact" checked class="text-indigo-600" onchange="updatePreview()">
+                    Компактна (тільки QR-код)
                 </label>
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="size" value="15x30" checked class="text-indigo-600" onchange="updatePreview()">
-                    15 × 30 мм
+                    <input type="radio" name="label_type" value="full" class="text-indigo-600" onchange="updatePreview()">
+                    Повна (QR + назва + код)
+                </label>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend class="block text-sm font-medium text-gray-700">Орієнтація</legend>
+            <div class="mt-2 space-y-1">
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="radio" name="orientation" value="horizontal" checked class="text-indigo-600" onchange="onOrientationChange()">
+                    Горизонтальна (QR зліва, текст справа)
                 </label>
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="size" value="15x40" class="text-indigo-600" onchange="updatePreview()">
-                    15 × 40 мм
+                    <input type="radio" name="orientation" value="vertical" class="text-indigo-600" onchange="onOrientationChange()">
+                    Вертикальна (QR зверху, текст знизу)
+                </label>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend class="block text-sm font-medium text-gray-700">Розмір</legend>
+            <div id="size-options" class="mt-2 space-y-1">
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="radio" name="size" value="30x12" class="text-indigo-600" onchange="updatePreview()">
+                    <span class="size-label">30 × 12 мм</span>
                 </label>
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="size" value="20x30" class="text-indigo-600" onchange="updatePreview()">
-                    20 × 30 мм
+                    <input type="radio" name="size" value="30x15" checked class="text-indigo-600" onchange="updatePreview()">
+                    <span class="size-label">30 × 15 мм</span>
                 </label>
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="size" value="20x50" class="text-indigo-600" onchange="updatePreview()">
-                    20 × 50 мм
+                    <input type="radio" name="size" value="40x15" class="text-indigo-600" onchange="updatePreview()">
+                    <span class="size-label">40 × 15 мм</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="radio" name="size" value="30x20" class="text-indigo-600" onchange="updatePreview()">
+                    <span class="size-label">30 × 20 мм</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="radio" name="size" value="50x20" class="text-indigo-600" onchange="updatePreview()">
+                    <span class="size-label">50 × 20 мм</span>
                 </label>
                 <label class="flex items-center gap-2 text-sm">
                     <input type="radio" name="size" value="custom" class="text-indigo-600" onchange="toggleCustom(); updatePreview()">
@@ -44,24 +70,24 @@
         <div id="custom-dimensions" class="hidden flex gap-2">
             <div>
                 <label class="block text-xs text-gray-500">Ширина (мм)</label>
-                <input type="number" name="custom_width" value="20" min="1" max="200"
+                <input type="number" name="custom_width" value="30" min="1" max="200"
                        class="mt-1 block w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
                        onchange="updatePreview()">
             </div>
             <div>
                 <label class="block text-xs text-gray-500">Висота (мм)</label>
-                <input type="number" name="custom_height" value="50" min="1" max="200"
+                <input type="number" name="custom_height" value="15" min="1" max="200"
                        class="mt-1 block w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
                        onchange="updatePreview()">
             </div>
         </div>
 
+        <div class="rounded-md bg-gray-50 p-3 text-xs text-gray-500">
+            Код: <span class="font-mono font-medium text-gray-700">{{ item.short_code }}</span>
+        </div>
+
         <div class="flex justify-end gap-2">
-            <button type="button" onclick="document.getElementById('label-dialog').innerHTML = ''"
-                    class="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Закрити
-            </button>
-            <a id="label-download-btn" href="/items/{{ item.id }}/label/download?size=15x30"
+            <a id="label-download-btn" href="/items/{{ item.id }}/label/download?size=30x15&label_type=compact&orientation=horizontal"
                class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
                 Завантажити PNG
             </a>
@@ -70,17 +96,100 @@
 </div>
 
 <script>
-function getSelectedSize() {
-    var checked = document.querySelector('input[name="size"]:checked');
-    return checked ? checked.value : '15x30';
+var SIZES = {
+    horizontal: [
+        {val: "30x12", label: "30 × 12 мм"},
+        {val: "30x15", label: "30 × 15 мм"},
+        {val: "40x15", label: "40 × 15 мм"},
+        {val: "30x20", label: "30 × 20 мм"},
+        {val: "50x20", label: "50 × 20 мм"}
+    ],
+    vertical: [
+        {val: "12x30", label: "12 × 30 мм"},
+        {val: "15x30", label: "15 × 30 мм"},
+        {val: "15x40", label: "15 × 40 мм"},
+        {val: "20x30", label: "20 × 30 мм"},
+        {val: "20x50", label: "20 × 50 мм"}
+    ]
+};
+
+var SIZE_DEFAULTS = {horizontal: "30x15", vertical: "15x30"};
+
+function getSelectedOrientation() {
+    var checked = document.querySelector('input[name="orientation"]:checked');
+    return checked ? checked.value : 'horizontal';
 }
 
-function buildPreviewUrl() {
+function getSelectedLabelType() {
+    var checked = document.querySelector('input[name="label_type"]:checked');
+    return checked ? checked.value : 'compact';
+}
+
+function getSelectedSize() {
+    var checked = document.querySelector('input[name="size"]:checked');
+    if (!checked) return SIZE_DEFAULTS[getSelectedOrientation()];
+    if (checked.value === 'custom') return 'custom';
+    return checked.value;
+}
+
+function rebuildSizeOptions() {
+    var orientation = getSelectedOrientation();
+    var sizes = SIZES[orientation];
+    var container = document.getElementById('size-options');
+    var currentVal = getSelectedSize();
+    var currentIsCustom = currentVal === 'custom';
+
+    var html = '';
+    for (var i = 0; i < sizes.length; i++) {
+        var s = sizes[i];
+        var checked = (!currentIsCustom && currentVal === s.val) ? ' checked' : '';
+        html += '<label class="flex items-center gap-2 text-sm">';
+        html += '<input type="radio" name="size" value="' + s.val + '"' + checked + ' class="text-indigo-600" onchange="updatePreview()">';
+        html += '<span class="size-label">' + s.label + '</span>';
+        html += '</label>';
+    }
+    var customChecked = currentIsCustom ? ' checked' : '';
+    html += '<label class="flex items-center gap-2 text-sm">';
+    html += '<input type="radio" name="size" value="custom"' + customChecked + ' class="text-indigo-600" onchange="toggleCustom(); updatePreview()">';
+    html += 'Інший';
+    html += '</label>';
+    container.innerHTML = html;
+}
+
+function onOrientationChange() {
+    var prev = getSelectedSize();
+    var prevOrientation = (prev !== 'custom') ?
+        (SIZES.horizontal.some(function(s){return s.val===prev}) ? 'horizontal' : 'vertical') : null;
+    var newOrientation = getSelectedOrientation();
+
+    rebuildSizeOptions();
+
+    if (prevOrientation && prevOrientation !== newOrientation) {
+        var parts = prev.split('x');
+        var swapped = parts[1] + 'x' + parts[0];
+        var newSizes = SIZES[newOrientation];
+        var found = newSizes.some(function(s) { return s.val === swapped; });
+        if (found) {
+            var radio = document.querySelector('input[name="size"][value="' + swapped + '"]');
+            if (radio) radio.checked = true;
+        } else {
+            var def = SIZE_DEFAULTS[newOrientation];
+            var defRadio = document.querySelector('input[name="size"][value="' + def + '"]');
+            if (defRadio) defRadio.checked = true;
+        }
+    }
+
+    updatePreview();
+}
+
+function buildBaseUrl() {
     var size = getSelectedSize();
-    var url = '/items/{{ item.id }}/label/preview?size=' + size;
+    var labelType = getSelectedLabelType();
+    var orientation = getSelectedOrientation();
+    var url = '/items/{{ item.id }}/label/preview?size=' + size + '&label_type=' + labelType + '&orientation=' + orientation;
     if (size === 'custom') {
-        var w = document.querySelector('input[name="custom_width"]').value || 20;
-        var h = document.querySelector('input[name="custom_height"]').value || 50;
+        var w = document.querySelector('input[name="custom_width"]').value || 30;
+        var h = document.querySelector('input[name="custom_height"]').value || 15;
         url += '&custom_width=' + w + '&custom_height=' + h;
     }
     return url;
@@ -88,10 +197,12 @@ function buildPreviewUrl() {
 
 function buildDownloadUrl() {
     var size = getSelectedSize();
-    var url = '/items/{{ item.id }}/label/download?size=' + size;
+    var labelType = getSelectedLabelType();
+    var orientation = getSelectedOrientation();
+    var url = '/items/{{ item.id }}/label/download?size=' + size + '&label_type=' + labelType + '&orientation=' + orientation;
     if (size === 'custom') {
-        var w = document.querySelector('input[name="custom_width"]').value || 20;
-        var h = document.querySelector('input[name="custom_height"]').value || 50;
+        var w = document.querySelector('input[name="custom_width"]').value || 30;
+        var h = document.querySelector('input[name="custom_height"]').value || 15;
         url += '&custom_width=' + w + '&custom_height=' + h;
     }
     return url;
@@ -99,7 +210,7 @@ function buildDownloadUrl() {
 
 function updatePreview() {
     var img = document.getElementById('label-preview-img');
-    img.src = buildPreviewUrl();
+    img.src = buildBaseUrl();
     document.getElementById('label-download-btn').href = buildDownloadUrl();
 }
 

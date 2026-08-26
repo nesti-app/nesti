@@ -52,14 +52,18 @@ async def get_user_by_supabase_id(db: AsyncSession, supabase_id: str) -> User | 
     return result.scalar_one_or_none()
 
 
-async def create_user(db: AsyncSession, data: UserCreate, supabase_id: str) -> User:
+async def create_user(
+    db: AsyncSession,
+    data: UserCreate,
+    supabase_id: str | None = None,
+) -> User:
     """Create a new user. supabase_id comes from Supabase Auth after invite/signup."""
     existing = await db.execute(select(User).where(User.email == data.email))
     if existing.scalar_one_or_none() is not None:
         raise ConflictError("User with this email already exists")
 
     user = User(
-        supabase_id=supabase_id,
+        supabase_id=supabase_id or str(uuid.uuid4()),
         email=data.email,
         display_name=data.display_name,
         role=data.role,
@@ -69,6 +73,13 @@ async def create_user(db: AsyncSession, data: UserCreate, supabase_id: str) -> U
     await db.flush()
     await db.refresh(user)
     return user
+
+
+async def delete_user(db: AsyncSession, user_id: uuid.UUID) -> None:
+    """Hard delete a user."""
+    user = await get_user_by_id(db, user_id)
+    await db.delete(user)
+    await db.flush()
 
 
 async def update_user(db: AsyncSession, user_id: uuid.UUID, data: UserUpdate) -> User:

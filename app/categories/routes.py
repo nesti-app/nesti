@@ -17,7 +17,8 @@ from app.categories.service import (
     update_category,
 )
 from app.db.engine import get_db
-from app.dependencies import require_admin
+from app.dependencies import get_current_user, require_admin
+from app.items.models import Item
 from app.users.models import User
 
 router = APIRouter(prefix="/categories", tags=["categories"])
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 @router.get("", response_class=HTMLResponse)
 async def categories_list(
     request: Request,
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
     categories, total = await list_categories(db)
@@ -36,12 +38,12 @@ async def categories_list(
         categories=categories,
         tree=tree,
         total=total,
-        current_user=request.state.current_user,
+        current_user=user,
     )
     return HTMLResponse(content=html)
 
 
-@router.get("/new", response_class=None)
+@router.get("/new", response_class=HTMLResponse)
 async def category_create_form(
     request: Request,
     user: User = Depends(require_admin),
@@ -78,16 +80,27 @@ async def category_create_submit(
 async def category_detail(
     request: Request,
     category_id: uuid.UUID,
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
     category = await get_category_by_id(db, category_id)
+
+    from app.items.service import list_items
+
+    items, total = await list_items(db, filters=[Item.category_id == category_id])
+
+    can_edit = user.role in ("admin", "editor")
+
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("categories/detail.html")
-    html = template.render(category=category, current_user=request.state.current_user)
+    html = template.render(
+        category=category, items=items, total=total,
+        can_edit=can_edit, current_user=user,
+    )
     return HTMLResponse(content=html)
 
 
-@router.get("/{category_id}/edit", response_class=None)
+@router.get("/{category_id}/edit", response_class=HTMLResponse)
 async def category_edit_form(
     request: Request,
     category_id: uuid.UUID,

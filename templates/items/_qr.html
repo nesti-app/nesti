@@ -1,12 +1,30 @@
-<div class="mt-4">
-    <h2 class="text-sm font-medium text-gray-500">QR-код</h2>
-    <div class="mt-2 flex items-start gap-4">
-        <img src="/items/{{ item.id }}/qr" alt="QR-код" class="h-32 w-32 rounded-md border bg-white p-1" />
-        <div class="flex flex-col gap-2">
-            <a href="/items/{{ item.id }}/qr/download" class="inline-flex items-center rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Завантажити QR
-            </a>
-            <span class="text-xs text-gray-400">{{ item.id }}</span>
+<div class="mt-4" x-data="{ copied: false, mode: 'code' }">
+    <h2 class="text-sm font-medium text-gray-500">QR-код та ідентифікатор</h2>
+    <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+        <a href="/items/{{ item.id }}/qr/download"
+           download="qr-{{ item.short_code or item.id }}.png"
+           class="flex-shrink-0 block"
+           title="Натисніть для завантаження">
+            <img src="/items/{{ item.id }}/qr" alt="QR-код" class="h-32 w-32 rounded-md border bg-white p-1 transition-opacity hover:opacity-80" />
+        </a>
+
+        <div class="min-w-0 flex-1">
+            <div class="flex gap-1 text-xs">
+                <button @click="mode = 'code'" :class="mode === 'code' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:bg-gray-100'" class="rounded px-2 py-1 font-medium transition">Код</button>
+                <button @click="mode = 'url'" :class="mode === 'url' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:bg-gray-100'" class="rounded px-2 py-1 font-medium transition">URL</button>
+            </div>
+
+            <div class="mt-2 flex items-center gap-1">
+                <input type="text" readonly
+                       :value="mode === 'code' ? '{{ item.short_code or item.id }}' : '{{ request.base_url }}items/{{ item.id }}'"
+                       class="min-w-0 flex-1 rounded-md border border-gray-300 bg-gray-50 px-3 py-1.5 font-mono text-xs text-gray-700 focus:outline-none"
+                       @click="$el.select(); navigator.clipboard.writeText($el.value).then(() => { copied = true; setTimeout(() => copied = false, 1500) })">
+                <button @click="navigator.clipboard.writeText(mode === 'code' ? '{{ item.short_code or item.id }}' : '{{ request.base_url }}items/{{ item.id }}').then(() => { copied = true; setTimeout(() => copied = false, 1500) })"
+                        class="flex-shrink-0 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                    <span x-show="!copied">Копіювати</span>
+                    <span x-show="copied" x-cloak class="text-green-600">Скопійовано!</span>
+                </button>
+            </div>
         </div>
     </div>
 </div>

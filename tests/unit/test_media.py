@@ -85,9 +85,18 @@ def test_to_webp():
 
 def test_generate_storage_paths():
     item_id = uuid.uuid4()
+    image_id = uuid.uuid4()
+    opt, thumb = generate_storage_paths(item_id, image_id)
+    assert opt == f"{item_id}/{image_id}-optimized.webp"
+    assert thumb == f"{item_id}/{image_id}-thumbnail.webp"
+
+
+def test_generate_storage_paths_no_image_id():
+    item_id = uuid.uuid4()
     opt, thumb = generate_storage_paths(item_id)
-    assert opt == f"{item_id}/optimized.webp"
-    assert thumb == f"{item_id}/thumbnail.webp"
+    assert opt.startswith(f"{item_id}/")
+    assert opt.endswith("-optimized.webp")
+    assert thumb.endswith("-thumbnail.webp")
 
 
 def test_upload_response_schema():

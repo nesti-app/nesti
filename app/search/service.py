@@ -50,6 +50,7 @@ async def search_items(
             Item.serial_number.ilike(pattern),
             Item.manufacturer.ilike(pattern),
             Item.model.ilike(pattern),
+            Item.short_code.ilike(pattern),
         )
         query = query.outerjoin(Item.tags).where(
             or_(search_filter, func.lower(cast(Item.id, String)) == q.lower())

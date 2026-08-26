@@ -10,7 +10,20 @@
 
     <div class="mx-auto max-w-2xl">
         <div class="rounded-lg border bg-white p-6 shadow-sm">
-            <h1 class="mb-4 text-2xl font-bold text-gray-900">{{ user.email }}</h1>
+            <div class="mb-4 flex items-start justify-between">
+                <h1 class="text-2xl font-bold text-gray-900">{{ user.email }}</h1>
+                <div x-data="{ open: false }" class="relative">
+                    <button @click="open = !open" class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">⋮</button>
+                    <div x-show="open" @click.outside="open = false" x-transition class="absolute right-0 z-10 mt-1 w-40 rounded-md border bg-white shadow-lg">
+                        <a href="/admin/users/{{ user.id }}/edit" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Редагувати</a>
+                        {% if user.id != current_user.id %}
+                        <form method="post" action="/admin/users/{{ user.id }}/delete" onsubmit="return confirm('Видалити користувача?')">
+                            <button type="submit" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50">Видалити</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
 
             <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
@@ -68,19 +81,21 @@
                 </div>
 
                 <h2 class="mt-4 mb-3 text-sm font-medium text-gray-700">Дії</h2>
-                {% if user.is_active %}
-                <form method="post" action="/admin/users/{{ user.id }}/deactivate">
-                    <button type="submit" class="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50">
-                        Деактивувати
-                    </button>
-                </form>
-                {% else %}
-                <form method="post" action="/admin/users/{{ user.id }}/reactivate">
-                    <button type="submit" class="rounded border border-green-300 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-50">
-                        Активувати
-                    </button>
-                </form>
-                {% endif %}
+                <div class="flex gap-2">
+                    {% if user.is_active %}
+                    <form method="post" action="/admin/users/{{ user.id }}/deactivate">
+                        <button type="submit" class="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50">
+                            Деактивувати
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="/admin/users/{{ user.id }}/reactivate">
+                        <button type="submit" class="rounded border border-green-300 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-50">
+                            Активувати
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
             </div>
             {% endif %}
         </div>

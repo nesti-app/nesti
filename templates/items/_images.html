@@ -14,8 +14,11 @@
     <div class="mt-3 grid grid-cols-3 gap-2">
         {% for img in item.images %}
         <div class="relative group rounded-md border overflow-hidden {% if img.is_primary %}ring-2 ring-indigo-500{% endif %}">
-            <div class="aspect-square bg-gray-100 flex items-center justify-center text-xs text-gray-400">
-                📷
+            <div class="aspect-square bg-gray-100">
+                <img src="/items/{{ item.id }}/images/{{ img.id }}/file"
+                     alt="Зображення"
+                     class="h-full w-full object-cover"
+                     loading="lazy">
             </div>
             {% if img.is_primary %}
             <span class="absolute top-1 left-1 rounded bg-indigo-600 px-1.5 py-0.5 text-xs text-white">Основне</span>

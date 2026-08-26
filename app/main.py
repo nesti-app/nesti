@@ -12,7 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
-from app.auth.middleware import get_session
+from app.auth.middleware import get_session, refresh_cookies, try_refresh_session
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -36,6 +36,13 @@ class UserContextMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         session = get_session(request)
+        refreshed = False
+
+        if session is None:
+            session = await try_refresh_session(request)
+            if session is not None:
+                refreshed = True
+
         request.state.current_user = None
         if session is not None:
             from sqlalchemy import select
@@ -51,7 +58,13 @@ class UserContextMiddleware(BaseHTTPMiddleware):
                 user = result.scalar_one_or_none()
                 if user is not None and user.is_active:
                     request.state.current_user = user
-        return await call_next(request)
+
+        response = await call_next(request)
+
+        if refreshed:
+            refresh_cookies(response, session)
+
+        return response
 
 
 @asynccontextmanager
@@ -98,18 +111,22 @@ def _register_error_handlers(app: FastAPI) -> None:
         html_paths = (
             "/dashboard", "/items", "/categories", "/tags",
             "/locations", "/access", "/admin", "/scan",
-            "/search", "/profile",
+            "/search", "/profile", "/s/",
         )
         return "text/html" in accept or path.startswith(html_paths)
+
+    def _render_error(request: Request, code: int, message: str) -> HTMLResponse:
+        jinja_env: Environment = request.app.state.jinja_env
+        template = jinja_env.get_template("errors/error.html")
+        html = template.render(code=code, message=message, current_user=None)
+        return HTMLResponse(content=html, status_code=code)
 
     @app.exception_handler(404)
     async def not_found_handler(
         request: Request, exc: Exception
     ) -> HTMLResponse | JSONResponse:
         if _is_html_request(request):
-            return HTMLResponse(
-                content="<h1>404 Not Found</h1>", status_code=404
-            )
+            return _render_error(request, 404, "Сторінку не знайдено")
         return JSONResponse(content={"detail": "Not Found"}, status_code=404)
 
     @app.exception_handler(401)
@@ -129,9 +146,7 @@ def _register_error_handlers(app: FastAPI) -> None:
         request: Request, exc: Exception
     ) -> HTMLResponse | JSONResponse:
         if _is_html_request(request):
-            return HTMLResponse(
-                content="<h1>403 Forbidden</h1>", status_code=403
-            )
+            return _render_error(request, 403, "У вас немає доступу до цієї сторінки")  # noqa: RUF001
         return JSONResponse(
             content={"detail": "Forbidden"},
             status_code=403,
@@ -140,6 +155,8 @@ def _register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(500)
     async def internal_error_handler(request: Request, exc: Exception) -> JSONResponse:
         logger.exception("Internal server error")
+        if _is_html_request(request):
+            return _render_error(request, 500, "Внутрішня помилка сервера")
         return JSONResponse(
             content={"detail": "Internal server error"},
             status_code=500,
@@ -150,7 +167,7 @@ def _register_error_handlers(app: FastAPI) -> None:
         request: Request, exc: RequestValidationError
     ) -> HTMLResponse | JSONResponse:
         if _is_html_request(request):
-            return HTMLResponse(content="<h1>422 — Помилка валідації</h1>", status_code=422)
+            return _render_error(request, 422, "Помилка валідації даних")
         return JSONResponse(
             content={"detail": exc.errors()},
             status_code=422,

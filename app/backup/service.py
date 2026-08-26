@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.categories.models import Category
 from app.items.models import Item, ItemAttribute, ItemMovement, ItemRelationship
 from app.locations.models import Location
+from app.media.models import ItemImage
 from app.tags.models import Tag
 
 SCHEMA_VERSION = "1.0"
@@ -41,7 +42,7 @@ async def export_inventory(db: AsyncSession) -> bytes:
         )
 
         tags = list((await db.execute(select(Tag))).scalars().all())
-        tag_data = [{"id": str(t.id), "name": t.name, "slug": t.slug} for t in tags]
+        tag_data = [{"id": str(t.id), "name": t.name} for t in tags]
         zf.writestr("tags.json", json.dumps(tag_data, indent=2))
 
         locs = list((await db.execute(select(Location))).scalars().all())
@@ -67,6 +68,29 @@ async def export_inventory(db: AsyncSession) -> bytes:
             "item_movements.json",
             json.dumps([_mov_to_dict(mv) for mv in movements], indent=2),
         )
+
+        images = list((await db.execute(select(ItemImage))).scalars().all())
+        zf.writestr(
+            "item_images.json",
+            json.dumps([_img_to_dict(img) for img in images], indent=2),
+        )
+
+        if images:
+            from app.config import get_settings
+            from supabase import create_client
+
+            settings = get_settings()
+            client = create_client(
+                settings.supabase_url, settings.supabase_service_role_key,
+            )
+            for img in images:
+                try:
+                    res = client.storage.from_(
+                        settings.supabase_storage_bucket,
+                    ).download(img.storage_path)
+                    zf.writestr(f"images/{img.storage_path}", res)
+                except Exception:
+                    pass
 
     return buf.getvalue()
 
@@ -105,7 +129,6 @@ def _loc_to_dict(loc: Location) -> dict:
     return {
         "id": str(loc.id),
         "name": loc.name,
-        "slug": loc.slug,
         "description": loc.description,
         "parent_location_id": (str(loc.parent_location_id) if loc.parent_location_id else None),
     }
@@ -142,4 +165,18 @@ def _mov_to_dict(mov: ItemMovement) -> dict:
         "moved_by": (str(mov.moved_by) if mov.moved_by else None),
         "reason": mov.reason,
         "notes": mov.notes,
+    }
+
+
+def _img_to_dict(img: ItemImage) -> dict:
+    return {
+        "id": str(img.id),
+        "item_id": str(img.item_id),
+        "storage_path": img.storage_path,
+        "mime_type": img.mime_type,
+        "width": img.width,
+        "height": img.height,
+        "size_bytes": img.size_bytes,
+        "sort_order": img.sort_order,
+        "is_primary": img.is_primary,
     }

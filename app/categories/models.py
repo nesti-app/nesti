@@ -17,7 +17,7 @@ class Category(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
     name: Mapped[str] = mapped_column(String, nullable=False)
-    slug: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    slug: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     parent_category_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True

@@ -2,22 +2,50 @@
 {% block title %}{{ location.name }} — Nesti{% endblock %}
 {% block content %}
 <div class="py-8">
-    <div class="mx-auto max-w-xl">
+    <div class="mx-auto max-w-2xl">
         <a href="/locations" class="text-sm text-indigo-600 hover:text-indigo-500">&larr; Назад</a>
         <div class="mt-4 rounded-lg border bg-white p-6 shadow-sm">
-            <h1 class="text-2xl font-bold text-gray-900">{{ location.name }}</h1>
+            <div class="flex items-start justify-between">
+                <h1 class="text-2xl font-bold text-gray-900">{{ location.name }}</h1>
+                {% if can_edit %}
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open" @click.outside="open = false"
+                            class="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z"/></svg>
+                    </button>
+                    <div x-show="open" x-transition class="absolute right-0 z-50 mt-2 w-44 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
+                        <div class="py-1">
+                            <a href="/locations/{{ location.id }}/edit" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Редагувати</a>
+                            <form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Видалити локацію?')">
+                                <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50">Видалити</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
             {% if location.description %}
             <p class="mt-3 text-sm text-gray-700">{{ location.description }}</p>
             {% endif %}
             {% if location.parent %}
             <p class="mt-3 text-sm text-gray-500">Батьківська: <a href="/locations/{{ location.parent.id }}" class="text-indigo-600 hover:text-indigo-500">{{ location.parent.name }}</a></p>
             {% endif %}
-            <div class="mt-6 flex gap-3">
-                <a href="/locations/{{ location.id }}/edit" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Редагувати</a>
-                <form method="post" action="/locations/{{ location.id }}/delete" onsubmit="return confirm('Видалити локацію?')">
-                    <button type="submit" class="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50">Видалити</button>
-                </form>
+
+            {% if items %}
+            <div class="mt-6">
+                <h2 class="text-sm font-medium text-gray-500">Предмети ({{ total }})</h2>
+                <ul class="mt-2 divide-y divide-gray-100">
+                    {% for item in items %}
+                    <li class="py-2">
+                        <a href="/items/{{ item.id }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">{{ item.name }}</a>
+                        {% if item.short_code %}
+                        <span class="ml-2 text-xs text-gray-400 font-mono">{{ item.short_code }}</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>

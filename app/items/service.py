@@ -13,6 +13,7 @@ from app.items.schemas import (
     ItemCreate,
     ItemUpdate,
 )
+from app.qr.service import uuid_to_short_code
 from app.tags.models import ItemTag
 
 
@@ -70,6 +71,8 @@ async def create_item(
     )
     db.add(item)
     await db.flush()
+
+    item.short_code = uuid_to_short_code(item.id)
 
     for tag_id in data.tag_ids:
         db.add(ItemTag(item_id=item.id, tag_id=tag_id))

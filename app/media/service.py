@@ -82,9 +82,12 @@ def _to_webp(img: Image.Image) -> tuple[bytes, int, int]:
     return buf.getvalue(), img.size[0], img.size[1]
 
 
-def generate_storage_paths(item_id: uuid.UUID) -> tuple[str, str]:
+def generate_storage_paths(
+    item_id: uuid.UUID, image_id: uuid.UUID | None = None,
+) -> tuple[str, str]:
     folder = str(item_id)
-    return f"{folder}/optimized.webp", f"{folder}/thumbnail.webp"
+    name = str(image_id) if image_id else str(uuid.uuid4())
+    return f"{folder}/{name}-optimized.webp", f"{folder}/{name}-thumbnail.webp"
 
 
 async def upload_image(
@@ -99,7 +102,8 @@ async def upload_image(
     validate_upload(filename, content_type, len(data))
 
     processed = process_image(data, content_type)
-    opt_path, thumb_path = generate_storage_paths(item_id)
+    image_id = uuid.uuid4()
+    opt_path, thumb_path = generate_storage_paths(item_id, image_id)
 
     settings = get_settings()
     bucket = settings.supabase_storage_bucket
@@ -150,7 +154,8 @@ async def delete_image(db: AsyncSession, image_id: uuid.UUID) -> None:
     settings = get_settings()
     bucket = settings.supabase_storage_bucket
 
-    thumb_path = str(PurePosixPath(image.storage_path).parent / "thumbnail.webp")
+    p = PurePosixPath(image.storage_path)
+    thumb_path = str(p.parent / p.name.replace("-optimized.webp", "-thumbnail.webp"))
 
     from supabase import create_client
 
@@ -229,7 +234,8 @@ async def get_thumbnail_url(image: ItemImage) -> str:
     settings = get_settings()
     bucket = settings.supabase_storage_bucket
 
-    thumb_path = str(PurePosixPath(image.storage_path).parent / "thumbnail.webp")
+    p = PurePosixPath(image.storage_path)
+    thumb_path = str(p.parent / p.name.replace("-optimized.webp", "-thumbnail.webp"))
 
     from supabase import create_client
 

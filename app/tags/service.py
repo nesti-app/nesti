@@ -40,6 +40,19 @@ async def get_tag_by_name(db: AsyncSession, name: str) -> Tag | None:
     return result.scalar_one_or_none()
 
 
+async def get_or_create_tag_by_name(db: AsyncSession, name: str) -> Tag:
+    """Get a tag by name (case-insensitive) or create it."""
+    result = await db.execute(select(Tag).where(Tag.name.ilike(name)))
+    tag = result.scalar_one_or_none()
+    if tag is not None:
+        return tag
+    tag = Tag(name=name)
+    db.add(tag)
+    await db.flush()
+    await db.refresh(tag)
+    return tag
+
+
 async def create_tag(db: AsyncSession, data: TagCreate) -> Tag:
     """Create a new tag."""
     existing = await get_tag_by_name(db, data.name)
