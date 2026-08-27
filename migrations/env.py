@@ -17,6 +17,7 @@ from app.access.models import (  # noqa: F401
 from app.categories.models import Category  # noqa: F401
 from app.config import get_settings
 from app.db.base import Base
+from app.db.engine import _async_database_url
 from app.items.models import Item, ItemAttribute, ItemMovement, ItemRelationship  # noqa: F401
 from app.locations.models import Location  # noqa: F401
 from app.media.models import ItemImage  # noqa: F401
@@ -33,7 +34,7 @@ target_metadata = Base.metadata
 # Override sqlalchemy.url with the actual database URL from app config
 settings = get_settings()
 if settings.database_url:
-    config.set_main_option("sqlalchemy.url", settings.database_url)
+    config.set_main_option("sqlalchemy.url", _async_database_url(settings.database_url))
 
 
 def run_migrations_offline() -> None:

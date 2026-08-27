@@ -71,6 +71,10 @@ class UserContextMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_logging()
     logger.info("Starting application (env=%s)", get_settings().app_env)
+    if get_settings().database_url:
+        from app.db.migrate import run_migrations
+
+        await run_migrations()
     yield
     logger.info("Shutting down application")
 

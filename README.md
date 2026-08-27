@@ -264,15 +264,18 @@ In the Vercel dashboard, go to **Settings → Environment Variables** and add al
 
 **Never** commit actual secrets to the repository.
 
-### 5. Run Migrations
+### 5. Database Migrations
 
-After the first deploy, run migrations against the production database:
+**Migrations run automatically** on application startup — you don't need to run
+them manually. On the first deploy (and every subsequent one), the app applies
+any pending Alembic migrations against the `DATABASE_URL` before serving
+requests.
+
+If you ever need to run them manually against the production database:
 
 ```bash
 DATABASE_URL="<production-database-url>" uv run alembic upgrade head
 ```
-
-Or connect to the Supabase database directly and run migrations.
 
 ### 6. First User Becomes Admin
 
