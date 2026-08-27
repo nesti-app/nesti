@@ -67,11 +67,66 @@ class AuthService:
         self._jwt_secret = settings.supabase_jwt_secret
         self._secret_key = settings.secret_key
         self._es256_key = None
+        self._jwks_keys: dict[str, object] | None = None
+        self._jwks_loaded = False
 
     def _get_es256_key(self):
         if self._es256_key is None:
             self._es256_key = _fetch_local_es256_key()
         return self._es256_key
+
+    async def load_jwks(self) -> None:
+        """Fetch Supabase JWKS signing keys and cache them for token verification.
+
+        Modern Supabase projects sign JWTs with ES256 keys exposed via a JWKS
+        endpoint instead of the legacy shared HS256 JWT secret.
+        """
+        if self._jwks_loaded:
+            return
+        self._jwks_loaded = True
+        if not self._supabase_url:
+            return
+        jwks_url = f"{self._supabase_url}/auth/v1/.well-known/jwks.json"
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.get(jwks_url, timeout=10.0)
+                if resp.status_code != 200:
+                    logger.warning("Failed to fetch JWKS (%s)", resp.status_code)
+                    return
+                keys = resp.json().get("keys", [])
+                self._jwks_keys = {}
+                for k in keys:
+                    try:
+                        self._jwks_keys[k["kid"]] = jwk_construct(k)
+                    except Exception:
+                        logger.warning("Skipping unparsable JWK: %s", k.get("kid"))
+            except httpx.HTTPError:
+                logger.exception("JWKS fetch error")
+
+    def _verify_with_jwks(self, token: str) -> dict | None:
+        """Verify a token against cached Supabase JWKS public keys."""
+        if not self._jwks_keys:
+            return None
+        try:
+            headers = jwt.get_unverified_header(token)
+        except JWTError:
+            return None
+        key = self._jwks_keys.get(headers.get("kid"))
+        if key is None:
+            # Retry without kid match against the (single) available key
+            if len(self._jwks_keys) == 1:
+                key = next(iter(self._jwks_keys.values()))
+            else:
+                return None
+        try:
+            return jwt.decode(
+                token,
+                key,
+                algorithms=["ES256", "RS256", "HS256"],
+                options={"verify_aud": False},
+            )
+        except JWTError:
+            return None
 
     def create_signed_session(self, access_token: str, refresh_token: str) -> dict[str, str]:
         """Create a signed session cookie payload from Supabase tokens."""
@@ -83,11 +138,18 @@ class AuthService:
     def verify_token(self, token: str) -> AuthUser | None:
         """Verify a Supabase JWT and return the user.
 
-        Tries:
-        1. HS256 with supabase_jwt_secret (production Supabase)
-        2. ES256 with local Supabase EC key (local dev)
-        3. HS256 with supabase_anon_key (fallback)
+        Tries (in order):
+        1. JWKS public keys (modern Supabase: ES256 / RS256 signing keys)
+        2. HS256 with supabase_jwt_secret (legacy Supabase shared secret)
+        3. ES256 with local Supabase EC key (local dev)
+        4. HS256 with supabase_anon_key (legacy fallback)
         """
+        # 1. JWKS-based verification (modern signing keys)
+        payload = self._verify_with_jwks(token)
+        if payload is not None:
+            return self._extract_user(payload)
+
+        # 2. Legacy HS256 shared secret
         if self._jwt_secret:
             try:
                 payload = jwt.decode(
@@ -100,6 +162,7 @@ class AuthService:
             except JWTError:
                 pass
 
+        # 3. Local Supabase ES256 key (local dev)
         es_key = self._get_es256_key()
         if es_key is not None:
             try:
@@ -113,6 +176,7 @@ class AuthService:
             except JWTError:
                 pass
 
+        # 4. Legacy anon-key fallback
         if self._supabase_anon_key:
             try:
                 payload = jwt.decode(

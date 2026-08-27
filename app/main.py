@@ -75,6 +75,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         from app.db.migrate import run_migrations
 
         await run_migrations()
+
+    from app.auth.service import auth_service
+
+    await auth_service.load_jwks()
     yield
     logger.info("Shutting down application")
 
