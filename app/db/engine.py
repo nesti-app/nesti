@@ -31,8 +31,8 @@ def _async_database_url(database_url: str) -> str:
 
     - Rewrites plain `postgres://` / `postgresql://` (which SQLAlchemy maps to
       the sync psycopg2 driver) to `postgresql+asyncpg://`.
-    - Ensures `sslmode=require` is present for Supabase Cloud hosts, which
-      require TLS (asyncpg does not enable SSL by default).
+    - Ensures `ssl=require` is present for Supabase Cloud hosts, which require
+      TLS (asyncpg does not enable SSL by default).
     """
     if database_url.startswith("postgresql+psycopg2://"):
         database_url = database_url.replace(
@@ -47,11 +47,11 @@ def _async_database_url(database_url: str) -> str:
             "postgres://", "postgresql+asyncpg://", 1
         )
 
-    if "supabase.co" in database_url and "sslmode" not in database_url:
+    if "supabase.co" in database_url and "ssl=" not in database_url:
         if "?" in database_url:
-            database_url += "&sslmode=require"
+            database_url += "&ssl=require"
         else:
-            database_url += "?sslmode=require"
+            database_url += "?ssl=require"
 
     return database_url
 

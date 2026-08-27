@@ -23,19 +23,19 @@ def test_async_database_url_normalizes_driver() -> None:
 
 
 def test_async_database_url_adds_ssl_for_supabase() -> None:
-    """Supabase Cloud URLs get sslmode=require added for TLS."""
+    """Supabase Cloud URLs get ssl=require added for TLS."""
     result = _async_database_url(
         "postgresql://postgres.abc:pw@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
     )
     assert result.startswith("postgresql+asyncpg://")
-    assert "sslmode=require" in result
+    assert "ssl=require" in result
     assert "pgbouncer=true" in result
 
-    # Existing sslmode should not be duplicated
+    # Existing ssl should not be duplicated
     result2 = _async_database_url(
-        "postgresql+asyncpg://u:p@db.x.supabase.co:5432/postgres?sslmode=require"
+        "postgresql+asyncpg://u:p@db.x.supabase.co:5432/postgres?ssl=require"
     )
-    assert result2.count("sslmode") == 1
+    assert result2.count("ssl") == 1
 
 
 def test_async_database_url_keeps_local_url_unchanged() -> None:
