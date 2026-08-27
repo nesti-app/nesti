@@ -2,6 +2,48 @@ from __future__ import annotations
 
 from httpx import AsyncClient
 
+from app.db.engine import _async_database_url
+
+
+def test_async_database_url_normalizes_driver() -> None:
+    """Plain postgres URLs are rewritten to use the asyncpg driver."""
+    assert _async_database_url("postgres://u:p@h/db") == "postgresql+asyncpg://u:p@h/db"
+    assert (
+        _async_database_url("postgresql://u:p@h/db")
+        == "postgresql+asyncpg://u:p@h/db"
+    )
+    assert (
+        _async_database_url("postgresql+psycopg2://u:p@h/db")
+        == "postgresql+asyncpg://u:p@h/db"
+    )
+    assert (
+        _async_database_url("postgresql+asyncpg://u:p@h/db")
+        == "postgresql+asyncpg://u:p@h/db"
+    )
+
+
+def test_async_database_url_adds_ssl_for_supabase() -> None:
+    """Supabase Cloud URLs get sslmode=require added for TLS."""
+    result = _async_database_url(
+        "postgresql://postgres.abc:pw@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+    )
+    assert result.startswith("postgresql+asyncpg://")
+    assert "sslmode=require" in result
+    assert "pgbouncer=true" in result
+
+    # Existing sslmode should not be duplicated
+    result2 = _async_database_url(
+        "postgresql+asyncpg://u:p@db.x.supabase.co:5432/postgres?sslmode=require"
+    )
+    assert result2.count("sslmode") == 1
+
+
+def test_async_database_url_keeps_local_url_unchanged() -> None:
+    """Local/non-Supabase URLs only get the driver normalized, no SSL forced."""
+    assert _async_database_url(
+        "postgresql://postgres:postgres@localhost:5432/db"
+    ) == "postgresql+asyncpg://postgres:postgres@localhost:5432/db"
+
 
 async def test_health_returns_ok(client: AsyncClient) -> None:
     response = await client.get("/health")
