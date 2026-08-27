@@ -88,6 +88,7 @@ async def search_items(
             selectinload(Item.category),
             selectinload(Item.location),
             selectinload(Item.tags),
+            selectinload(Item.images),
         )
         .order_by(order)
     )

@@ -22,19 +22,23 @@ router = APIRouter(tags=["search"])
 async def search_page(
     request: Request,
     q: str | None = Query(None),
-    category_id: uuid.UUID | None = Query(None),
-    location_id: uuid.UUID | None = Query(None),
-    tag_id: uuid.UUID | None = Query(None),
+    category_id: str | None = Query(None),
+    location_id: str | None = Query(None),
+    tag_id: str | None = Query(None),
     sort: str = Query("name_asc"),
     page: int = Query(1, ge=1),
     user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
+    cat_uuid = uuid.UUID(category_id) if category_id else None
+    loc_uuid = uuid.UUID(location_id) if location_id else None
+    tag_uuid = uuid.UUID(tag_id) if tag_id else None
+
     params = SearchParams(
         q=q,
-        category_id=category_id,
-        location_id=location_id,
-        tag_id=tag_id,
+        category_id=cat_uuid,
+        location_id=loc_uuid,
+        tag_id=tag_uuid,
         sort=sort,
         page=page,
     )
@@ -60,9 +64,9 @@ async def search_page(
         categories=categories,
         locations=locations,
         tags=tags,
-        selected_category=category_id,
-        selected_location=location_id,
-        selected_tag=tag_id,
+        selected_category=cat_uuid,
+        selected_location=loc_uuid,
+        selected_tag=tag_uuid,
         sort=sort,
         current_user=user,
     )
