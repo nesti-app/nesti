@@ -253,6 +253,15 @@ Create `vercel.json` in the project root:
 
 In the Vercel dashboard, go to **Settings → Environment Variables** and add all variables from `.env.example` with production values.
 
+> **Important:** the `DATABASE_URL` must use the **asyncpg** driver prefix —
+> `postgresql+asyncpg://...`. The connection string shown in the Supabase
+> dashboard is usually plain `postgresql://...`, which SQLAlchemy maps to the
+> `psycopg2` driver (not installed) and breaks every database query with a 500.
+>
+> The app automatically normalizes plain `postgres://` / `postgresql://` URLs
+> to `postgresql+asyncpg://` and adds `sslmode=require` for Supabase Cloud
+> hosts, but using the correct prefix avoids any confusion.
+
 **Never** commit actual secrets to the repository.
 
 ### 5. Run Migrations
