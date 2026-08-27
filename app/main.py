@@ -45,19 +45,19 @@ class UserContextMiddleware(BaseHTTPMiddleware):
 
         request.state.current_user = None
         if session is not None:
-            from sqlalchemy import select
-
             from app.db.engine import _get_session_factory
-            from app.users.models import User
+            from app.users.service import ensure_user_exists
 
             session_factory = _get_session_factory()
             async with session_factory() as db:
-                result = await db.execute(
-                    select(User).where(User.supabase_id == session.user.supabase_id)
+                user = await ensure_user_exists(
+                    db,
+                    session.user.supabase_id,
+                    session.user.email,
                 )
-                user = result.scalar_one_or_none()
-                if user is not None and user.is_active:
+                if user.is_active:
                     request.state.current_user = user
+                await db.commit()
 
         response = await call_next(request)
 

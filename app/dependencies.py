@@ -7,13 +7,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.middleware import SessionData, get_session
 from app.db.engine import get_db
 from app.users.models import User
+from app.users.service import ensure_user_exists
 
 
 async def get_current_user(
     session: SessionData | None = Depends(get_session),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Get the current authenticated user from the session."""
+    """Get the current authenticated user from the session.
+
+    Auto-creates the user record on first login if it does not yet exist
+    (first user in an empty database is bootstrapped as admin).
+    """
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -21,14 +26,9 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Cookie"},
         )
 
-    result = await db.execute(select(User).where(User.supabase_id == session.user.supabase_id))
-    user = result.scalar_one_or_none()
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
+    user = await ensure_user_exists(
+        db, session.user.supabase_id, session.user.email
+    )
 
     if not user.is_active:
         raise HTTPException(

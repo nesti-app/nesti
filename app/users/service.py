@@ -118,15 +118,22 @@ async def ensure_user_exists(
     supabase_id: str,
     email: str,
 ) -> User:
-    """Ensure a user record exists for a Supabase Auth user. Creates if missing."""
+    """Ensure a user record exists for a Supabase Auth user. Creates if missing.
+
+    The very first user in an empty database is bootstrapped as an admin
+    (first-login bootstrap). Subsequent auto-created users default to viewer.
+    """
     user = await get_user_by_supabase_id(db, supabase_id)
     if user is not None:
         return user
 
+    result = await db.execute(select(func.count()).select_from(User))
+    total = result.scalar_one()
+
     user = User(
         supabase_id=supabase_id,
         email=email,
-        role="viewer",
+        role="admin" if total == 0 else "viewer",
         is_active=True,
     )
     db.add(user)

@@ -265,7 +265,18 @@ DATABASE_URL="<production-database-url>" uv run alembic upgrade head
 
 Or connect to the Supabase database directly and run migrations.
 
-### 6. Verify Deployment
+### 6. First User Becomes Admin
+
+The very first user who successfully signs in to a fresh deployment (an empty
+`users` table) is automatically created in the database with the **`admin`**
+role. This means you don't need to provision an admin manually — just sign up
+or log in through Supabase Auth and that account becomes the administrator.
+Afterwards you can manage other users (viewer/editor/admin) from
+**Admin → Users**.
+
+Subsequent users who are auto-created on login default to the `viewer` role.
+
+### 7. Verify Deployment
 
 1. Open `https://your-project.vercel.app/health` — should return OK
 2. Test authentication flow

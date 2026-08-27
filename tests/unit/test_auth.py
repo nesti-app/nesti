@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.service import AuthService, AuthUser
 from app.dependencies import get_db
+from app.users.service import ensure_user_exists
 
 
 def test_auth_service_verify_token_invalid() -> None:
@@ -21,6 +22,37 @@ def test_auth_user_dataclass() -> None:
     user = AuthUser(supabase_id="abc-123", email="test@example.com")
     assert user.supabase_id == "abc-123"
     assert user.email == "test@example.com"
+
+
+async def test_ensure_user_exists_first_user_becomes_admin() -> None:
+    """First user auto-created in empty DB is bootstrapped as admin."""
+    db = AsyncMock(spec=AsyncSession)
+    exec_mock = Mock()
+    exec_mock.scalar_one_or_none.return_value = None  # user not found yet
+    exec_mock.scalar_one.return_value = 0  # empty database
+    db.execute.return_value = exec_mock
+
+    user = await ensure_user_exists(db, "sb-first", "first@example.com")
+
+    assert user.role == "admin"
+    added = db.add.call_args.args[0]
+    assert added.role == "admin"
+    assert added.supabase_id == "sb-first"
+
+
+async def test_ensure_user_exists_second_user_is_viewer() -> None:
+    """Subsequent auto-created users default to viewer."""
+    db = AsyncMock(spec=AsyncSession)
+    exec_mock = Mock()
+    exec_mock.scalar_one_or_none.return_value = None  # user not found yet
+    exec_mock.scalar_one.return_value = 1  # one user already exists
+    db.execute.return_value = exec_mock
+
+    user = await ensure_user_exists(db, "sb-second", "second@example.com")
+
+    assert user.role == "viewer"
+    added = db.add.call_args.args[0]
+    assert added.role == "viewer"
 
 
 async def test_login_page_renders(client: AsyncClient) -> None:
