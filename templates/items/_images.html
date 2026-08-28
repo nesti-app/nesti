@@ -1,6 +1,12 @@
 <div class="mt-4">
     <h2 class="text-sm font-medium text-gray-500">Зображення</h2>
 
+    {% if photo_error %}
+    <div class="mt-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+        Не вдалося завантажити зображення. Переконайтеся, що файл — фото (JPEG, PNG, HEIC, WebP, GIF), і спробуйте ще раз.
+    </div>
+    {% endif %}
+
     {% if 'manage_images' in permissions %}
     <form method="post" action="/items/{{ item.id }}/images" enctype="multipart/form-data" class="mt-2">
         <label class="block cursor-pointer rounded-md border-2 border-dashed border-gray-300 p-4 text-center text-sm text-gray-500 hover:border-indigo-400 hover:text-indigo-600">

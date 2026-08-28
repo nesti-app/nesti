@@ -25,6 +25,23 @@ def _make_test_image(width: int = 100, height: int = 100) -> bytes:
     return buf.getvalue()
 
 
+def _make_png() -> bytes:
+    img = Image.new("RGB", (10, 10), color="blue")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _make_heic() -> bytes:
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+    img = Image.new("RGB", (80, 60), color="green")
+    buf = io.BytesIO()
+    img.save(buf, format="HEIF")
+    return buf.getvalue()
+
+
 def test_validate_upload_ok():
     data = _make_test_image()
     validate_upload("photo.jpg", "image/jpeg", len(data))
@@ -43,6 +60,30 @@ def test_validate_upload_bad_type():
 def test_validate_upload_blocked_ext():
     with pytest.raises(ConflictError, match="Blocked"):
         validate_upload("virus.exe", "image/jpeg", 100)
+
+
+def test_validate_upload_sniffs_real_type():
+    data = _make_png()
+    validate_upload("photo", "application/octet-stream", len(data), data=data)
+
+
+def test_validate_upload_heic():
+    data = _make_heic()
+    validate_upload("photo.heic", "image/heic", len(data), data=data)
+
+
+def test_validate_upload_true_unsupported():
+    data = b"%PDF-1.4 some fake pdf"
+    with pytest.raises(ConflictError, match="Unsupported"):
+        validate_upload("file.pdf", "application/pdf", len(data), data=data)
+
+
+def test_process_image_heic():
+    data = _make_heic()
+    result = process_image(data, "image/heic")
+    assert result["mime_type"] == "image/webp"
+    assert result["optimized"] is not None
+    assert result["thumbnail"] is not None
 
 
 def test_process_image_creates_webp():

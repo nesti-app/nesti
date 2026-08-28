@@ -202,22 +202,32 @@ async def item_create_submit(
         tag_ids=tag_ids,
     )
     item = await create_item(db, data, user_id=user.id)
+    await db.commit()
 
+    photo_error = False
     if photo and photo.filename:
         content = await photo.read()
         if content:
-            from app.media.service import upload_image
+            try:
+                from app.media.service import upload_image
 
-            await upload_image(
-                db,
-                item_id=item.id,
-                filename=photo.filename,
-                content_type=photo.content_type or "application/octet-stream",
-                data=content,
-                user_id=user.id,
-            )
+                await upload_image(
+                    db,
+                    item_id=item.id,
+                    filename=photo.filename,
+                    content_type=photo.content_type or "application/octet-stream",
+                    data=content,
+                    user_id=user.id,
+                )
+                await db.commit()
+            except Exception:
+                await db.rollback()
+                photo_error = True
 
-    return RedirectResponse(url=f"/items/{item.id}", status_code=303)
+    url = f"/items/{item.id}"
+    if photo_error:
+        url += "?photo_error=1"
+    return RedirectResponse(url=url, status_code=303)
 
 
 @router.get("/{item_id}", response_class=HTMLResponse)
@@ -241,6 +251,7 @@ async def item_detail(
         permissions=permissions,
         current_user=user,
         request=request,
+        photo_error=request.query_params.get("photo_error") == "1",
     )
     return HTMLResponse(content=html)
 
@@ -343,22 +354,32 @@ async def item_edit_submit(
         tag_ids=tag_ids,
     )
     await update_item(db, item_id, data, user_id=user.id)
+    await db.commit()
 
+    photo_error = False
     if photo and photo.filename:
         content = await photo.read()
         if content:
-            from app.media.service import upload_image
+            try:
+                from app.media.service import upload_image
 
-            await upload_image(
-                db,
-                item_id=item_id,
-                filename=photo.filename,
-                content_type=photo.content_type or "application/octet-stream",
-                data=content,
-                user_id=user.id,
-            )
+                await upload_image(
+                    db,
+                    item_id=item_id,
+                    filename=photo.filename,
+                    content_type=photo.content_type or "application/octet-stream",
+                    data=content,
+                    user_id=user.id,
+                )
+                await db.commit()
+            except Exception:
+                await db.rollback()
+                photo_error = True
 
-    return RedirectResponse(url=f"/items/{item_id}", status_code=303)
+    url = f"/items/{item_id}"
+    if photo_error:
+        url += "?photo_error=1"
+    return RedirectResponse(url=url, status_code=303)
 
 
 @router.post("/{item_id}/delete")

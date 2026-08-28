@@ -5,6 +5,7 @@ import uuid
 from pathlib import PurePosixPath
 
 from PIL import Image, ImageFile
+from pillow_heif import register_heif_opener
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,18 +15,78 @@ from app.media.models import ItemImage
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+register_heif_opener()
+
+ALLOWED_MIME_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/heic",
+    "image/heif",
+    "image/avif",
+}
 BLOCKED_EXTENSIONS = {".exe", ".sh", ".bat", ".cmd", ".com", ".msi", ".scr", ".pif"}
 
+_HEIF_BRANDS = {
+    "heic",
+    "heix",
+    "hevc",
+    "hevx",
+    "heim",
+    "heis",
+    "hevm",
+    "hevs",
+    "mif1",
+    "msf1",
+    "avif",
+    "avis",
+}
 
-def validate_upload(filename: str, content_type: str, size_bytes: int) -> None:
+
+def detect_image_type(data: bytes) -> str | None:
+    """Identify the real image content type from the file's magic bytes.
+
+    Phone browsers often send a misleading or missing Content-Type (e.g.
+    ``application/octet-stream``, ``image/jpg``) or modern formats such as
+    HEIC/AVIF, so we sniff the actual bytes instead of trusting the header.
+    """
+    if not data:
+        return None
+
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+
+    if len(data) >= 12 and data[4:8] == b"ftyp":
+        brand = data[8:12].decode("ascii", errors="ignore").lower()
+        if brand in _HEIF_BRANDS:
+            return "image/avif" if brand == "avif" else "image/heic"
+
+    return None
+
+
+def validate_upload(
+    filename: str,
+    content_type: str,
+    size_bytes: int,
+    data: bytes | None = None,
+) -> None:
     settings = get_settings()
 
     if size_bytes > settings.max_upload_size:
         max_mb = settings.max_upload_size // (1024 * 1024)
         raise ConflictError(f"File too large: {size_bytes} bytes (max {max_mb}MB)")
 
-    if content_type not in ALLOWED_MIME_TYPES:
+    detected = detect_image_type(data) if data else None
+    effective_type = detected or content_type
+
+    if effective_type not in ALLOWED_MIME_TYPES:
         raise ConflictError(f"Unsupported file type: {content_type}")
 
     ext = PurePosixPath(filename).suffix.lower()
@@ -99,7 +160,7 @@ async def upload_image(
     data: bytes,
     user_id: uuid.UUID | None = None,
 ) -> ItemImage:
-    validate_upload(filename, content_type, len(data))
+    validate_upload(filename, content_type, len(data), data=data)
 
     processed = process_image(data, content_type)
     image_id = uuid.uuid4()
