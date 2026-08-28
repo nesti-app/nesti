@@ -108,7 +108,7 @@
                 <div x-data="manufacturerAutocomplete()" class="relative">
                     <label for="manufacturer" class="block text-sm font-medium text-gray-700">Виробник</label>
                     <div class="relative">
-                        <input type="text" name="manufacturer" id="manufacturer" x-model="value" @input="search()" @keydown.escape="suggestions = []" @click.outside="suggestions = []" autocomplete="off" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        <input type="text" name="manufacturer" id="manufacturer" value="{{ item.manufacturer if item and item.manufacturer else '' }}" x-model="value" @input="search()" @keydown.escape="suggestions = []" @click.outside="suggestions = []" autocomplete="off" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
                         <div x-show="suggestions.length > 0" x-transition class="absolute z-10 mt-1 w-full max-h-40 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
                             <template x-for="(s, i) in suggestions" :key="i">
                                 <button type="button" @click="value = s; suggestions = []" class="block w-full px-3 py-2 text-left text-sm hover:bg-indigo-50" x-text="s"></button>

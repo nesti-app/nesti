@@ -246,12 +246,16 @@ async def item_detail(
 
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("items/detail.html")
+    gallery_json = [
+        f"/items/{item.id}/images/{img.id}/file" for img in item.images
+    ]
     html = template.render(
         item=item,
         permissions=permissions,
         current_user=user,
         request=request,
         photo_error=request.query_params.get("photo_error") == "1",
+        gallery_json=gallery_json,
     )
     return HTMLResponse(content=html)
 

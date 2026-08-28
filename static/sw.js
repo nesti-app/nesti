@@ -1,7 +1,9 @@
-const CACHE_NAME = "nesti-v4";
+const CACHE_NAME = "nesti-v5";
 const STATIC_ASSETS = [
     "/static/manifest.json",
     "/static/js/jsqr.js",
+    "/static/js/alpine.js",
+    "/static/js/htmx.js",
     "/static/icons/nesti.png",
     "/static/icons/icon-192.png",
     "/static/icons/icon-512.png",

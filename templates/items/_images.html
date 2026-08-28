@@ -1,4 +1,4 @@
-<div class="mt-4">
+<div class="mt-4" x-data="imageGallery({{ gallery_json | tojson }})">
     <h2 class="text-sm font-medium text-gray-500">Зображення</h2>
 
     {% if photo_error %}
@@ -7,44 +7,72 @@
     </div>
     {% endif %}
 
-    {% if 'manage_images' in permissions %}
-    <form method="post" action="/items/{{ item.id }}/images" enctype="multipart/form-data" class="mt-2">
-        <label class="block cursor-pointer rounded-md border-2 border-dashed border-gray-300 p-4 text-center text-sm text-gray-500 hover:border-indigo-400 hover:text-indigo-600">
-            <input type="file" name="file" accept="image/*" class="sr-only" onchange="this.form.submit()">
-            Натисніть або перетягніть зображення для завантаження
-        </label>
-    </form>
-    {% endif %}
-
     {% if item.images %}
     <div class="mt-3 grid grid-cols-3 gap-2">
         {% for img in item.images %}
-        <div class="relative group rounded-md border overflow-hidden {% if img.is_primary %}ring-2 ring-indigo-500{% endif %}">
-            <div class="aspect-square bg-gray-100">
+        <button type="button" class="relative group rounded-md border overflow-hidden p-0 text-left {% if img.is_primary %}ring-2 ring-indigo-500{% endif %}" @click="open({{ loop.index0 }})">
+            <span class="block aspect-square bg-gray-100">
                 <img src="/items/{{ item.id }}/images/{{ img.id }}/file"
-                     alt="Зображення"
+                     alt="Зображення {{ loop.index }}"
                      class="h-full w-full object-cover"
                      loading="lazy">
-            </div>
+            </span>
             {% if img.is_primary %}
             <span class="absolute top-1 left-1 rounded bg-indigo-600 px-1.5 py-0.5 text-xs text-white">Основне</span>
             {% endif %}
-            {% if 'manage_images' in permissions %}
-            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                {% if not img.is_primary %}
-                <form method="post" action="/items/{{ item.id }}/images/{{ img.id }}/primary">
-                    <button type="submit" class="rounded bg-white/90 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-white">Основне</button>
-                </form>
-                {% endif %}
-                <form method="post" action="/items/{{ item.id }}/images/{{ img.id }}/delete" onsubmit="return confirm('Видалити зображення?')">
-                    <button type="submit" class="rounded bg-red-600/90 px-2 py-1 text-xs font-medium text-white hover:bg-red-600">Видалити</button>
-                </form>
-            </div>
-            {% endif %}
-        </div>
+        </button>
         {% endfor %}
     </div>
     {% else %}
     <p class="mt-2 text-xs text-gray-400">Немає зображень.</p>
     {% endif %}
+
+    <div x-show="open" x-cloak x-transition.opacity
+         class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
+         @keydown.escape.window="open = false"
+         @keydown.right.window="next()"
+         @keydown.left.window="prev()"
+         @touchstart="touchStart($event)"
+         @touchend="touchEnd($event)">
+        <button type="button" @click="open = false" class="absolute top-3 right-3 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Закрити">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+
+        <button type="button" @click="prev()" x-show="images.length > 1" class="absolute left-2 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Попереднє">
+            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+
+        <img :src="images[index]" alt="Зображення"
+             class="max-h-[85vh] max-w-[92vw] rounded object-contain"
+             x-show="images.length && images[index]">
+
+        <button type="button" @click="next()" x-show="images.length > 1" class="absolute right-2 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Наступне">
+            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </button>
+
+        <div x-show="images.length > 1" class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-sm text-white">
+            <span x-text="index + 1"></span> / <span x-text="images.length"></span>
+        </div>
+    </div>
 </div>
+
+<script>
+function imageGallery(urls) {
+    return {
+        images: urls,
+        index: 0,
+        open: false,
+        _touchX: null,
+        open(i) { this.index = i; this.open = true; },
+        next() { if (this.images.length) this.index = (this.index + 1) % this.images.length; },
+        prev() { if (this.images.length) this.index = (this.index - 1 + this.images.length) % this.images.length; },
+        touchStart(e) { this._touchX = e.touches[0].clientX; },
+        touchEnd(e) {
+            if (this._touchX == null) return;
+            var dx = e.changedTouches[0].clientX - this._touchX;
+            this._touchX = null;
+            if (Math.abs(dx) > 40) { if (dx < 0) this.next(); else this.prev(); }
+        }
+    };
+}
+</script>
