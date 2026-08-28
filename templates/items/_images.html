@@ -10,7 +10,7 @@
     {% if item.images %}
     <div class="mt-3 grid grid-cols-3 gap-2">
         {% for img in item.images %}
-        <button type="button" class="relative group rounded-md border overflow-hidden p-0 text-left {% if img.is_primary %}ring-2 ring-indigo-500{% endif %}" @click="open({{ loop.index0 }})">
+        <button type="button" class="relative group rounded-md border overflow-hidden p-0 text-left {% if img.is_primary %}ring-2 ring-indigo-500{% endif %}" @click.prevent="open({{ loop.index0 }})">
             <span class="block aspect-square bg-gray-100">
                 <img src="/items/{{ item.id }}/images/{{ img.id }}/file"
                      alt="Зображення {{ loop.index }}"
@@ -34,11 +34,11 @@
          @keydown.left.window="prev()"
          @touchstart="touchStart($event)"
          @touchend="touchEnd($event)">
-        <button type="button" @click="isOpen = false" class="absolute top-3 right-3 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Закрити">
+        <button type="button" @click.prevent="isOpen = false" class="absolute top-3 right-3 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Закрити">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
 
-        <button type="button" @click="prev()" x-show="images.length > 1" class="absolute left-2 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Попереднє">
+        <button type="button" @click.prevent="prev()" x-show="images.length > 1" class="absolute left-2 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Попереднє">
             <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         </button>
 
@@ -46,7 +46,7 @@
              class="max-h-[85vh] max-w-[92vw] rounded object-contain"
              x-show="images.length && images[index]">
 
-        <button type="button" @click="next()" x-show="images.length > 1" class="absolute right-2 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Наступне">
+        <button type="button" @click.prevent="next()" x-show="images.length > 1" class="absolute right-2 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Наступне">
             <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
         </button>
 
