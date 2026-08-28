@@ -60,7 +60,6 @@ async def category_create_form(
 async def category_create_submit(
     request: Request,
     name: str = Form(...),
-    slug: str = Form(...),
     description: str = Form(""),
     parent_category_id: uuid.UUID | None = Form(None),
     user: User = Depends(require_admin),
@@ -68,7 +67,6 @@ async def category_create_submit(
 ) -> RedirectResponse:
     data = CategoryCreate(
         name=name,
-        slug=slug,
         description=description or None,
         parent_category_id=parent_category_id,
     )
@@ -120,7 +118,6 @@ async def category_edit_submit(
     category_id: uuid.UUID,
     request: Request,
     name: str = Form(...),
-    slug: str = Form(...),
     description: str = Form(""),
     parent_category_id: uuid.UUID | None = Form(None),
     user: User = Depends(require_admin),
@@ -128,7 +125,6 @@ async def category_edit_submit(
 ) -> RedirectResponse:
     data = CategoryUpdate(
         name=name,
-        slug=slug,
         description=description or None,
         parent_category_id=parent_category_id,
     )

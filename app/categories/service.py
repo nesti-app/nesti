@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from re import sub
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,14 +9,6 @@ from sqlalchemy.orm import selectinload
 from app.categories.models import Category
 from app.categories.schemas import CategoryCreate, CategoryUpdate
 from app.common.exceptions import ConflictError, NotFoundError
-
-
-def _slugify(text: str) -> str:
-    text = text.lower().strip()
-    text = sub(r"[^\w\s-]", "", text)
-    text = sub(r"[\s_]+", "-", text)
-    text = sub(r"-+", "-", text)
-    return text.strip("-")
 
 
 async def list_categories(
@@ -50,19 +41,6 @@ async def get_category_by_id(db: AsyncSession, category_id: uuid.UUID) -> Catego
     return category
 
 
-async def get_category_by_slug(db: AsyncSession, slug: str) -> Category:
-    """Get a category by slug."""
-    result = await db.execute(
-        select(Category)
-        .where(Category.slug == slug)
-        .options(selectinload(Category.parent))
-    )
-    category = result.scalar_one_or_none()
-    if category is None:
-        raise NotFoundError("Category not found")
-    return category
-
-
 async def create_category(db: AsyncSession, data: CategoryCreate) -> Category:
     """Create a new category."""
     if data.parent_category_id is not None:
@@ -70,7 +48,6 @@ async def create_category(db: AsyncSession, data: CategoryCreate) -> Category:
 
     category = Category(
         name=data.name,
-        slug=data.slug,
         description=data.description,
         parent_category_id=data.parent_category_id,
     )
@@ -125,7 +102,6 @@ async def build_tree(categories: list[Category]) -> list[dict]:
         lookup[cat.id] = {
             "id": cat.id,
             "name": cat.name,
-            "slug": cat.slug,
             "children": [],
         }
 

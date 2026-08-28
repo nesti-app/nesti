@@ -9,9 +9,8 @@ from app.tags.schemas import TagCreate, TagResponse, TagUpdate
 
 
 def test_category_create_schema():
-    data = CategoryCreate(name="Kitchen", slug="kitchen")
+    data = CategoryCreate(name="Kitchen")
     assert data.name == "Kitchen"
-    assert data.slug == "kitchen"
     assert data.description is None
     assert data.parent_category_id is None
 
@@ -20,7 +19,6 @@ def test_category_create_with_parent():
     pid = uuid.uuid4()
     data = CategoryCreate(
         name="Appliances",
-        slug="appliances",
         parent_category_id=pid,
     )
     assert data.parent_category_id == pid
@@ -29,7 +27,6 @@ def test_category_create_with_parent():
 def test_category_update_all_optional():
     data = CategoryUpdate()
     assert data.name is None
-    assert data.slug is None
     assert data.description is None
     assert data.parent_category_id is None
 
@@ -38,14 +35,12 @@ def test_category_response_fields():
     resp = CategoryResponse(
         id=uuid.uuid4(),
         name="Test",
-        slug="test",
         description="desc",
         parent_category_id=None,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
     assert resp.name == "Test"
-    assert resp.slug == "test"
 
 
 def test_tag_create_schema():
