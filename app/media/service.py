@@ -4,7 +4,7 @@ import io
 import uuid
 from pathlib import PurePosixPath
 
-from PIL import Image, ImageFile
+from PIL import Image, ImageFile, ImageOps
 from pillow_heif import register_heif_opener
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -97,6 +97,7 @@ def validate_upload(
 def process_image(data: bytes, content_type: str) -> dict:
     settings = get_settings()
     img = Image.open(io.BytesIO(data))
+    img = ImageOps.exif_transpose(img)
 
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")

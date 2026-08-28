@@ -10,17 +10,21 @@
     {% if item.images %}
     <div class="mt-3 grid grid-cols-3 gap-2">
         {% for img in item.images %}
-        <button type="button" class="relative group rounded-md border overflow-hidden p-0 text-left {% if img.is_primary %}ring-2 ring-indigo-500{% endif %}" @click.prevent="open({{ loop.index0 }})">
+        <div role="button" tabindex="0"
+             class="relative group cursor-zoom-in rounded-md border overflow-hidden {% if img.is_primary %}ring-2 ring-indigo-500{% endif %}"
+             @click.prevent.stop="open({{ loop.index0 }})"
+             @keydown.enter.prevent="open({{ loop.index0 }})">
             <span class="block aspect-square bg-gray-100">
                 <img src="/items/{{ item.id }}/images/{{ img.id }}/file"
                      alt="Зображення {{ loop.index }}"
                      class="h-full w-full object-cover"
+                     draggable="false"
                      loading="lazy">
             </span>
             {% if img.is_primary %}
             <span class="absolute top-1 left-1 rounded bg-indigo-600 px-1.5 py-0.5 text-xs text-white">Основне</span>
             {% endif %}
-        </button>
+        </div>
         {% endfor %}
     </div>
     {% else %}
@@ -34,21 +38,22 @@
          @keydown.left.window="prev()"
          @touchstart="touchStart($event)"
          @touchend="touchEnd($event)">
-        <button type="button" @click.prevent="isOpen = false" class="absolute top-3 right-3 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Закрити">
+        <div role="button" tabindex="0" @click.prevent.stop="isOpen = false" @keydown.enter.prevent="isOpen = false" class="absolute top-3 right-3 z-[110] cursor-pointer rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Закрити">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
+        </div>
 
-        <button type="button" @click.prevent="prev()" x-show="images.length > 1" class="absolute left-2 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Попереднє">
+        <div role="button" tabindex="0" @click.prevent.stop="prev()" @keydown.enter.prevent="prev()" x-show="images.length > 1" class="absolute left-2 z-[110] cursor-pointer rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Попереднє">
             <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        </button>
+        </div>
 
         <img :src="images[index]" alt="Зображення"
              class="max-h-[85vh] max-w-[92vw] rounded object-contain"
+             draggable="false"
              x-show="images.length && images[index]">
 
-        <button type="button" @click.prevent="next()" x-show="images.length > 1" class="absolute right-2 z-[110] rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Наступне">
+        <div role="button" tabindex="0" @click.prevent.stop="next()" @keydown.enter.prevent="next()" x-show="images.length > 1" class="absolute right-2 z-[110] cursor-pointer rounded-full bg-white/20 p-2 text-white hover:bg-white/30" aria-label="Наступне">
             <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-        </button>
+        </div>
 
         <div x-show="images.length > 1" class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-sm text-white">
             <span x-text="index + 1"></span> / <span x-text="images.length"></span>
