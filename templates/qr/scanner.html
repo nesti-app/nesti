@@ -50,6 +50,7 @@
     </div>
 </div>
 
+<script src="/static/js/jsqr.js"></script>
 <script>
 (function() {
     var APP_URL = "{{ app_url }}";
@@ -133,21 +134,25 @@
                 canvas.height = video.videoHeight;
                 ctx.drawImage(video, 0, 0);
 
-                var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                if (typeof jsQR === "undefined") {
+                    scanning = false;
+                    stream.getTracks().forEach(function(t) { t.stop(); });
+                    showError("Не вдалося завантажити бібліотеку сканування. Використовуйте ручний ввід.");
+                    return;
+                }
 
-                if (typeof jsQR !== "undefined") {
-                    var code = jsQR(imageData.data, imageData.width, imageData.height, {
-                        inversionAttempts: "dontInvert"
-                    });
-                    if (code && code.data) {
-                        var result = resolveInput(code.data);
-                        if (result) {
-                            scanning = false;
-                            showSuccess();
-                            stream.getTracks().forEach(function(t) { t.stop(); });
-                            navigate(result);
-                            return;
-                        }
+                var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                var code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert"
+                });
+                if (code && code.data) {
+                    var result = resolveInput(code.data);
+                    if (result) {
+                        scanning = false;
+                        showSuccess();
+                        stream.getTracks().forEach(function(t) { t.stop(); });
+                        navigate(result);
+                        return;
                     }
                 }
 
@@ -163,5 +168,4 @@
         });
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
 {% endblock %}
