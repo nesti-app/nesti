@@ -122,20 +122,20 @@ Edit `.env` and fill in all values:
 | `APP_ENV`                  | `development` or `production`                         |
 | `APP_URL`                  | Application base URL (e.g., `http://localhost:8000`)  |
 | `SECRET_KEY`               | Random secret for session signing (generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"`) |
-| `DATABASE_URL`             | PostgreSQL connection string (transaction mode)        |
+| `DATABASE_URL`             | PostgreSQL connection string (asyncpg / pooler)       |
 | `SUPABASE_URL`             | Supabase project URL                                  |
 | `SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key (`sb_publishable_...`)       |
 | `SUPABASE_SECRET_KEY`      | Supabase secret key (`sb_secret_...`) — server-side only |
 | `SUPABASE_STORAGE_BUCKET`  | Storage bucket name (default: `inventory-images`)     |
-| `MAX_UPLOAD_SIZE`          | Max upload size in bytes (default: `10485760` = 10MB)|
+| `MAX_UPLOAD_SIZE`          | Max upload size in bytes (default: `10485760` = 10MB) |
+| `IMAGE_MAX_DIMENSION`      | Max dimension for optimized images (default: `2400`)  |
+| `THUMBNAIL_MAX_DIMENSION`  | Max dimension for thumbnails (default: `256`)         |
+| `LABEL_DPI`                | DPI for label generation (default: `203`)             |
 
 > **Key migration:** the modern `SUPABASE_PUBLISHABLE_KEY` /
 > `SUPABASE_SECRET_KEY` are preferred. The legacy `SUPABASE_ANON_KEY` and
 > `SUPABASE_SERVICE_ROLE_KEY` are still supported as fallbacks for backward
 > compatibility; the app uses whichever is set, preferring the modern keys.
-| `IMAGE_MAX_DIMENSION`      | Max dimension for optimized images (default: `2400`)  |
-| `THUMBNAIL_MAX_DIMENSION`  | Max dimension for thumbnails (default: `256`)         |
-| `LABEL_DPI`                | DPI for label generation (default: `203`)             |
 
 ### 3. Local PostgreSQL (Optional)
 
@@ -260,14 +260,24 @@ Create `vercel.json` in the project root:
 
 In the Vercel dashboard, go to **Settings → Environment Variables** and add all variables from `.env.example` with production values.
 
-> **Important:** the `DATABASE_URL` must use the **asyncpg** driver prefix —
-> `postgresql+asyncpg://...`. The connection string shown in the Supabase
-> dashboard is usually plain `postgresql://...`, which SQLAlchemy maps to the
-> `psycopg2` driver (not installed) and breaks every database query with a 500.
->
-> The app automatically normalizes plain `postgres://` / `postgresql://` URLs
-> to `postgresql+asyncpg://` and adds `ssl=require` for Supabase Cloud hosts,
-> but using the correct prefix avoids any confusion.
+**Important:** the `DATABASE_URL` must use the **asyncpg** driver prefix —
+`postgresql+asyncpg://...`. The connection string shown in the Supabase
+dashboard is usually plain `postgresql://...`, which SQLAlchemy maps to the
+`psycopg2` driver (not installed) and breaks every database query with a 500.
+The app automatically normalizes plain `postgres://` / `postgresql://` URLs
+to `postgresql+asyncpg://` and adds `ssl=require` for Supabase Cloud hosts,
+but using the correct prefix avoids any confusion.
+**Use the Supabase pooler (session pooler, port 5432), not the direct host.**
+The direct host (`db.<ref>.supabase.co:5432`) is often unreachable from
+serverless environments (Vercel) and causes a 500 on every page. The
+correct working form looks like:
+```
+postgresql://postgres.<project-ref>:<DB_PASSWORD>@aws-1-eu-west-1.pooler.supabase.com:5432/postgres
+```
+Copy the exact **Session pooler** connection string from
+Supabase → **Connect** (take care to use the **5432** port). Prefer the
+session pooler (5432) over the transaction pooler (6543) unless you need
+pgbouncer-mode semantics.
 
 **Never** commit actual secrets to the repository.
 
