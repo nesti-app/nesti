@@ -42,7 +42,7 @@ async def login_submit(
                 f"?grant_type=password",
                 json={"email": email, "password": password},
                 headers={
-                    "apikey": settings.supabase_anon_key,
+                    "apikey": settings.effective_publishable_key,
                     "Content-Type": "application/json",
                 },
                 timeout=10.0,

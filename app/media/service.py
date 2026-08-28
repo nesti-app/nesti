@@ -110,7 +110,7 @@ async def upload_image(
 
     from supabase import create_client
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = create_client(settings.supabase_url, settings.effective_secret_key)
 
     client.storage.from_(bucket).upload(
         opt_path,
@@ -159,7 +159,7 @@ async def delete_image(db: AsyncSession, image_id: uuid.UUID) -> None:
 
     from supabase import create_client
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = create_client(settings.supabase_url, settings.effective_secret_key)
 
     client.storage.from_(bucket).remove([image.storage_path, thumb_path])
 
@@ -224,7 +224,7 @@ async def get_image_url(image: ItemImage) -> str:
 
     from supabase import create_client
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = create_client(settings.supabase_url, settings.effective_secret_key)
 
     result = client.storage.from_(bucket).create_signed_url(image.storage_path, expires_in=3600)
     return result.get("signedUrl", "")
@@ -239,7 +239,7 @@ async def get_thumbnail_url(image: ItemImage) -> str:
 
     from supabase import create_client
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = create_client(settings.supabase_url, settings.effective_secret_key)
 
     result = client.storage.from_(bucket).create_signed_url(thumb_path, expires_in=3600)
     return result.get("signedUrl", "")

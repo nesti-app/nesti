@@ -22,8 +22,22 @@ class Settings(BaseSettings):
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
     supabase_jwt_secret: str = ""
-
     supabase_storage_bucket: str = "inventory-images"
+
+    # Modern Supabase API keys (sb_publishable_... / sb_secret_...).
+    # Preferred over the legacy anon / service_role JWT-based keys.
+    supabase_publishable_key: str = ""
+    supabase_secret_key: str = ""
+
+    @property
+    def effective_publishable_key(self) -> str:
+        """Publishable (client-side) key, falling back to the legacy anon key."""
+        return self.supabase_publishable_key or self.supabase_anon_key
+
+    @property
+    def effective_secret_key(self) -> str:
+        """Secret (server-side) key, falling back to the legacy service_role key."""
+        return self.supabase_secret_key or self.supabase_service_role_key
 
     max_upload_size: int = 10_485_760
     image_max_dimension: int = 2400

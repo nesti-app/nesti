@@ -91,11 +91,13 @@ USING (bucket_id = 'inventory-images' AND auth.role() = 'authenticated');
 
 ### 5. Obtain Keys
 
-Go to **Settings → API** and note:
+Go to **Settings → API Keys** and note:
 
 - **Project URL** (e.g., `https://xyzcompany.supabase.co`)
-- **anon public key** (starts with `eyJ...`)
-- **service_role key** (starts with `eyJ...` — keep this secret, never expose to client)
+- **Publishable key** (`sb_publishable_...`) — used for public/auth calls
+- **Secret key** (`sb_secret_...`) — server-side only, never expose to client
+- Legacy **anon** / **service_role** keys are also supported as fallbacks but
+  the modern publishable/secret keys are preferred.
 
 ## Local Setup
 
@@ -122,10 +124,15 @@ Edit `.env` and fill in all values:
 | `SECRET_KEY`               | Random secret for session signing (generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"`) |
 | `DATABASE_URL`             | PostgreSQL connection string (transaction mode)        |
 | `SUPABASE_URL`             | Supabase project URL                                  |
-| `SUPABASE_ANON_KEY`        | Supabase anon/public key                              |
-| `SUPABASE_SERVICE_ROLE_KEY`| Supabase service-role key (server-side only)          |
+| `SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key (`sb_publishable_...`)       |
+| `SUPABASE_SECRET_KEY`      | Supabase secret key (`sb_secret_...`) — server-side only |
 | `SUPABASE_STORAGE_BUCKET`  | Storage bucket name (default: `inventory-images`)     |
 | `MAX_UPLOAD_SIZE`          | Max upload size in bytes (default: `10485760` = 10MB)|
+
+> **Key migration:** the modern `SUPABASE_PUBLISHABLE_KEY` /
+> `SUPABASE_SECRET_KEY` are preferred. The legacy `SUPABASE_ANON_KEY` and
+> `SUPABASE_SERVICE_ROLE_KEY` are still supported as fallbacks for backward
+> compatibility; the app uses whichever is set, preferring the modern keys.
 | `IMAGE_MAX_DIMENSION`      | Max dimension for optimized images (default: `2400`)  |
 | `THUMBNAIL_MAX_DIMENSION`  | Max dimension for thumbnails (default: `256`)         |
 | `LABEL_DPI`                | DPI for label generation (default: `203`)             |
@@ -259,8 +266,8 @@ In the Vercel dashboard, go to **Settings → Environment Variables** and add al
 > `psycopg2` driver (not installed) and breaks every database query with a 500.
 >
 > The app automatically normalizes plain `postgres://` / `postgresql://` URLs
-> to `postgresql+asyncpg://` and adds `sslmode=require` for Supabase Cloud
-> hosts, but using the correct prefix avoids any confusion.
+> to `postgresql+asyncpg://` and adds `ssl=require` for Supabase Cloud hosts,
+> but using the correct prefix avoids any confusion.
 
 **Never** commit actual secrets to the repository.
 

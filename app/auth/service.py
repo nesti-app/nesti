@@ -62,8 +62,9 @@ class AuthService:
     def __init__(self) -> None:
         settings = get_settings()
         self._supabase_url = settings.supabase_url
-        self._supabase_anon_key = settings.supabase_anon_key
-        self._supabase_service_key = settings.supabase_service_role_key
+        self._publishable_key = settings.effective_publishable_key
+        self._service_key = settings.effective_secret_key
+        self._legacy_anon_key = settings.supabase_anon_key
         self._jwt_secret = settings.supabase_jwt_secret
         self._secret_key = settings.secret_key
         self._es256_key = None
@@ -74,6 +75,18 @@ class AuthService:
         if self._es256_key is None:
             self._es256_key = _fetch_local_es256_key()
         return self._es256_key
+
+    def _service_auth_headers(self) -> dict[str, str]:
+        """Auth headers for privileged (admin/Storage) calls.
+
+        The modern `sb_secret_...` key is sent on the `apikey` header only --
+        Supabase rejects it in `Authorization: Bearer`. The legacy JWT-based
+        `service_role` key additionally uses Bearer. Both are sent on `apikey`.
+        """
+        headers = {"apikey": self._service_key}
+        if self._service_key and not self._service_key.startswith("sb_secret_"):
+            headers["Authorization"] = f"Bearer {self._service_key}"
+        return headers
 
     async def load_jwks(self) -> None:
         """Fetch Supabase JWKS signing keys and cache them for token verification.
@@ -177,11 +190,11 @@ class AuthService:
                 pass
 
         # 4. Legacy anon-key fallback
-        if self._supabase_anon_key:
+        if self._legacy_anon_key:
             try:
                 payload = jwt.decode(
                     token,
-                    self._supabase_anon_key,
+                    self._legacy_anon_key,
                     algorithms=["HS256"],
                     options={"verify_aud": False},
                 )
@@ -207,7 +220,7 @@ class AuthService:
                     f"{self._supabase_url}/auth/v1/token?grant_type=authorization_code",
                     json={"auth_code": code},
                     headers={
-                        "apikey": self._supabase_anon_key,
+                        "apikey": self._publishable_key,
                         "Content-Type": "application/json",
                     },
                     timeout=10.0,
@@ -236,7 +249,7 @@ class AuthService:
                     f"{self._supabase_url}/auth/v1/token?grant_type=refresh_token",
                     json={"refresh_token": refresh_token},
                     headers={
-                        "apikey": self._supabase_anon_key,
+                        "apikey": self._publishable_key,
                         "Content-Type": "application/json",
                     },
                     timeout=10.0,
@@ -268,7 +281,7 @@ class AuthService:
                 resp = await client.post(
                     f"{self._supabase_url}/auth/v1/logout",
                     headers={
-                        "apikey": self._supabase_anon_key,
+                        "apikey": self._publishable_key,
                         "Authorization": f"Bearer {access_token}",
                     },
                     timeout=10.0,
@@ -286,8 +299,7 @@ class AuthService:
                     f"{self._supabase_url}/auth/v1/admin/users",
                     json={"email": email, "password": password, "email_confirm": True},
                     headers={
-                        "apikey": self._supabase_service_key,
-                        "Authorization": f"Bearer {self._supabase_service_key}",
+                        **self._service_auth_headers(),
                         "Content-Type": "application/json",
                     },
                     timeout=10.0,
@@ -312,8 +324,7 @@ class AuthService:
                     f"{self._supabase_url}/auth/v1/admin/users/{supabase_id}",
                     json={"password": password},
                     headers={
-                        "apikey": self._supabase_service_key,
-                        "Authorization": f"Bearer {self._supabase_service_key}",
+                        **self._service_auth_headers(),
                         "Content-Type": "application/json",
                     },
                     timeout=10.0,
@@ -336,10 +347,7 @@ class AuthService:
             try:
                 resp = await client.delete(
                     f"{self._supabase_url}/auth/v1/admin/users/{supabase_id}",
-                    headers={
-                        "apikey": self._supabase_service_key,
-                        "Authorization": f"Bearer {self._supabase_service_key}",
-                    },
+                    headers=self._service_auth_headers(),
                     timeout=10.0,
                 )
                 if resp.status_code not in (200, 204):

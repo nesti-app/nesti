@@ -81,7 +81,7 @@ async def export_inventory(db: AsyncSession) -> bytes:
 
             settings = get_settings()
             client = create_client(
-                settings.supabase_url, settings.supabase_service_role_key,
+                settings.supabase_url, settings.effective_secret_key,
             )
             for img in images:
                 try:
