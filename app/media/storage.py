@@ -34,11 +34,18 @@ class S3StorageBackend:
         return self._settings.storage_bucket
 
     def _client_kwargs(self) -> dict[str, Any]:
+        from botocore.config import Config
+
         return {
             "endpoint_url": self._settings.s3_endpoint_url,
             "aws_access_key_id": self._settings.s3_access_key_id,
             "aws_secret_access_key": self._settings.s3_secret_access_key,
             "region_name": self._settings.s3_region,
+            # Supabase's S3-compatible API only supports path-style addressing.
+            # With an HTTPS endpoint (no explicit port) boto3 defaults to
+            # virtual-hosted-style, which resolves to the wrong host and makes
+            # every request fail.
+            "config": Config(s3={"addressing_style": "path"}),
         }
 
     async def _client(self) -> Any:
