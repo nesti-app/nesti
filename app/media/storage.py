@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any, Protocol
 
 from botocore.exceptions import ClientError
 
 from app.config import Settings, get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class StorageBackend(Protocol):
@@ -55,49 +58,85 @@ class S3StorageBackend:
         return session.create_client("s3", **self._client_kwargs())
 
     async def upload(self, path: str, data: bytes, content_type: str) -> None:
-        async with await self._client() as client:
-            await client.put_object(
-                Bucket=self._bucket,
-                Key=path,
-                Body=data,
-                ContentType=content_type,
+        try:
+            async with await self._client() as client:
+                await client.put_object(
+                    Bucket=self._bucket,
+                    Key=path,
+                    Body=data,
+                    ContentType=content_type,
+                )
+        except Exception:
+            logger.exception(
+                "S3 upload failed (endpoint=%s bucket=%s key=%s)",
+                self._settings.s3_endpoint_url,
+                self._bucket,
+                path,
             )
+            raise
 
     async def download(self, path: str) -> bytes:
-        async with await self._client() as client:
-            response = await client.get_object(Bucket=self._bucket, Key=path)
-            body = response["Body"]
-            data: bytes = await body.read()
-            return data
+        try:
+            async with await self._client() as client:
+                response = await client.get_object(Bucket=self._bucket, Key=path)
+                body = response["Body"]
+                data: bytes = await body.read()
+                return data
+        except Exception:
+            logger.exception(
+                "S3 download failed (endpoint=%s bucket=%s key=%s)",
+                self._settings.s3_endpoint_url,
+                self._bucket,
+                path,
+            )
+            raise
 
     async def delete(self, paths: list[str]) -> None:
         if not paths:
             return
-        async with await self._client() as client:
-            kwargs: dict[str, Any] = {
-                "Bucket": self._bucket,
-                "Delete": {"Objects": [{"Key": p} for p in paths]},
-            }
-            if len(paths) == 1:
-                # delete_objects requires at least the Quiet flag or one object;
-                # a single empty Delete is not sent. Be explicit with Quiet.
-                kwargs["Delete"]["Quiet"] = True
-            try:
-                await client.delete_objects(**kwargs)
-            except ClientError:
-                # Some providers reject EmptyObjectList for a single object.
-                # Fall back to a plain delete_object call.
-                for p in paths:
-                    await client.delete_object(Bucket=self._bucket, Key=p)
+        try:
+            async with await self._client() as client:
+                kwargs: dict[str, Any] = {
+                    "Bucket": self._bucket,
+                    "Delete": {"Objects": [{"Key": p} for p in paths]},
+                }
+                if len(paths) == 1:
+                    # delete_objects requires at least the Quiet flag or one object;
+                    # a single empty Delete is not sent. Be explicit with Quiet.
+                    kwargs["Delete"]["Quiet"] = True
+                try:
+                    await client.delete_objects(**kwargs)
+                except ClientError:
+                    # Some providers reject EmptyObjectList for a single object.
+                    # Fall back to a plain delete_object call.
+                    for p in paths:
+                        await client.delete_object(Bucket=self._bucket, Key=p)
+        except Exception:
+            logger.exception(
+                "S3 delete failed (endpoint=%s bucket=%s keys=%s)",
+                self._settings.s3_endpoint_url,
+                self._bucket,
+                paths,
+            )
+            raise
 
     async def signed_url(self, path: str, expires_in: int = 3600) -> str:
-        async with await self._client() as client:
-            return await asyncio.to_thread(
-                client.generate_presigned_url,
-                "get_object",
-                Params={"Bucket": self._bucket, "Key": path},
-                ExpiresIn=expires_in,
+        try:
+            async with await self._client() as client:
+                return await asyncio.to_thread(
+                    client.generate_presigned_url,
+                    "get_object",
+                    Params={"Bucket": self._bucket, "Key": path},
+                    ExpiresIn=expires_in,
+                )
+        except Exception:
+            logger.exception(
+                "S3 signed_url failed (endpoint=%s bucket=%s key=%s)",
+                self._settings.s3_endpoint_url,
+                self._bucket,
+                path,
             )
+            raise
 
 
 class SupabaseStorageBackend:
