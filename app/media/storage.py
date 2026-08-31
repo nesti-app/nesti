@@ -52,10 +52,9 @@ class S3StorageBackend:
         }
 
     async def _client(self) -> Any:
-        import aiobotocore
+        from aiobotocore.session import get_session
 
-        session = aiobotocore.get_session()
-        return session.create_client("s3", **self._client_kwargs())
+        return get_session().create_client("s3", **self._client_kwargs())
 
     async def upload(self, path: str, data: bytes, content_type: str) -> None:
         try:
