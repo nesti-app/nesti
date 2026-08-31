@@ -112,8 +112,7 @@ async def serve_image_file(
 ) -> Response:
     from sqlalchemy import select
 
-    from app.config import get_settings
-    from supabase import create_client
+    from app.media.storage import get_storage_backend
 
     result = await db.execute(
         select(ItemImage).where(ItemImage.id == image_id, ItemImage.item_id == item_id)
@@ -122,13 +121,8 @@ async def serve_image_file(
     if image is None:
         return Response(status_code=404)
 
-    settings = get_settings()
-    client = create_client(settings.supabase_url, settings.effective_secret_key)
-
     try:
-        res = client.storage.from_(settings.supabase_storage_bucket).download(
-            image.storage_path
-        )
-        return Response(content=res, media_type=image.mime_type)
+        data = await get_storage_backend().download(image.storage_path)
+        return Response(content=data, media_type=image.mime_type)
     except Exception:
         return Response(status_code=404)

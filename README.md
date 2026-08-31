@@ -28,7 +28,7 @@ A modern web application for managing a personal inventory of physical objects l
 - **Backend:** Python 3.13+, FastAPI, SQLAlchemy 2.x, Alembic, PostgreSQL
 - **Frontend:** Jinja2, HTMX, Tailwind CSS, minimal vanilla JavaScript
 - **Auth:** Supabase Auth
-- **Storage:** Supabase Storage (images)
+- **Storage:** Supabase Storage (images), optionally via its S3-compatible API (fully async)
 - **Deployment:** Vercel (serverless)
 
 ## Prerequisites
@@ -127,6 +127,11 @@ Edit `.env` and fill in all values:
 | `SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key (`sb_publishable_...`)       |
 | `SUPABASE_SECRET_KEY`      | Supabase secret key (`sb_secret_...`) — server-side only |
 | `SUPABASE_STORAGE_BUCKET`  | Storage bucket name (default: `inventory-images`)     |
+| `S3_ENDPOINT_URL`          | S3-compatible endpoint (e.g. `https://<ref>.supabase.co/storage/v1/s3`). Set to enable S3 backend |
+| `S3_ACCESS_KEY_ID`         | S3 access key ID (Supabase → Storage → Settings → S3 API Access) |
+| `S3_SECRET_ACCESS_KEY`     | S3 secret access key (same location)                  |
+| `S3_BUCKET_NAME`           | Bucket used via S3 API (defaults to `SUPABASE_STORAGE_BUCKET`) |
+| `S3_REGION`                | S3 region (default: `us-east-1`)                      |
 | `MAX_UPLOAD_SIZE`          | Max upload size in bytes (default: `10485760` = 10MB) |
 | `IMAGE_MAX_DIMENSION`      | Max dimension for optimized images (default: `2400`)  |
 | `THUMBNAIL_MAX_DIMENSION`  | Max dimension for thumbnails (default: `256`)         |

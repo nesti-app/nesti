@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 import uuid
 from pathlib import PurePosixPath
@@ -12,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.exceptions import ConflictError, NotFoundError
 from app.config import get_settings
 from app.media.models import ItemImage
+from app.media.storage import get_storage_backend
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -167,22 +169,11 @@ async def upload_image(
     image_id = uuid.uuid4()
     opt_path, thumb_path = generate_storage_paths(item_id, image_id)
 
-    settings = get_settings()
-    bucket = settings.supabase_storage_bucket
+    backend = get_storage_backend()
 
-    from supabase import create_client
-
-    client = create_client(settings.supabase_url, settings.effective_secret_key)
-
-    client.storage.from_(bucket).upload(
-        opt_path,
-        processed["optimized"],
-        file_options={"content-type": processed["mime_type"]},
-    )
-    client.storage.from_(bucket).upload(
-        thumb_path,
-        processed["thumbnail"],
-        file_options={"content-type": processed["mime_type"]},
+    await asyncio.gather(
+        backend.upload(opt_path, processed["optimized"], processed["mime_type"]),
+        backend.upload(thumb_path, processed["thumbnail"], processed["mime_type"]),
     )
 
     existing = await db.execute(select(ItemImage).where(ItemImage.item_id == item_id))
@@ -213,17 +204,11 @@ async def delete_image(db: AsyncSession, image_id: uuid.UUID) -> None:
     if image is None:
         raise NotFoundError("Image not found")
 
-    settings = get_settings()
-    bucket = settings.supabase_storage_bucket
-
     p = PurePosixPath(image.storage_path)
     thumb_path = str(p.parent / p.name.replace("-optimized.webp", "-thumbnail.webp"))
 
-    from supabase import create_client
-
-    client = create_client(settings.supabase_url, settings.effective_secret_key)
-
-    client.storage.from_(bucket).remove([image.storage_path, thumb_path])
+    backend = get_storage_backend()
+    await backend.delete([image.storage_path, thumb_path])
 
     was_primary = image.is_primary
     item_id = image.item_id
@@ -281,27 +266,13 @@ async def reorder_images(
 
 
 async def get_image_url(image: ItemImage) -> str:
-    settings = get_settings()
-    bucket = settings.supabase_storage_bucket
-
-    from supabase import create_client
-
-    client = create_client(settings.supabase_url, settings.effective_secret_key)
-
-    result = client.storage.from_(bucket).create_signed_url(image.storage_path, expires_in=3600)
-    return result.get("signedUrl", "")
+    backend = get_storage_backend()
+    return await backend.signed_url(image.storage_path, expires_in=3600)
 
 
 async def get_thumbnail_url(image: ItemImage) -> str:
-    settings = get_settings()
-    bucket = settings.supabase_storage_bucket
-
     p = PurePosixPath(image.storage_path)
     thumb_path = str(p.parent / p.name.replace("-optimized.webp", "-thumbnail.webp"))
 
-    from supabase import create_client
-
-    client = create_client(settings.supabase_url, settings.effective_secret_key)
-
-    result = client.storage.from_(bucket).create_signed_url(thumb_path, expires_in=3600)
-    return result.get("signedUrl", "")
+    backend = get_storage_backend()
+    return await backend.signed_url(thumb_path, expires_in=3600)

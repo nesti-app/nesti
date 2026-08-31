@@ -76,19 +76,13 @@ async def export_inventory(db: AsyncSession) -> bytes:
         )
 
         if images:
-            from app.config import get_settings
-            from supabase import create_client
+            from app.media.storage import get_storage_backend
 
-            settings = get_settings()
-            client = create_client(
-                settings.supabase_url, settings.effective_secret_key,
-            )
+            backend = get_storage_backend()
             for img in images:
                 try:
-                    res = client.storage.from_(
-                        settings.supabase_storage_bucket,
-                    ).download(img.storage_path)
-                    zf.writestr(f"images/{img.storage_path}", res)
+                    data = await backend.download(img.storage_path)
+                    zf.writestr(f"images/{img.storage_path}", data)
                 except Exception:
                     pass
 

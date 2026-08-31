@@ -24,6 +24,26 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = ""
     supabase_storage_bucket: str = "inventory-images"
 
+    # S3-compatible object storage (currently used to talk to Supabase Storage
+    # over its S3 API for fully async I/O via aiobotocore). When `s3_endpoint_url`
+    # is empty, the legacy synchronous supabase-py client is used instead.
+    s3_endpoint_url: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    s3_bucket_name: str = ""
+    s3_region: str = "us-east-1"
+
+    @property
+    def s3_enabled(self) -> bool:
+        return bool(
+            self.s3_endpoint_url and self.s3_access_key_id and self.s3_secret_access_key
+        )
+
+    @property
+    def storage_bucket(self) -> str:
+        """Effective bucket name: S3 bucket when S3 is enabled, else Supabase bucket."""
+        return self.s3_bucket_name or self.supabase_storage_bucket
+
     # Modern Supabase API keys (sb_publishable_... / sb_secret_...).
     # Preferred over the legacy anon / service_role JWT-based keys.
     supabase_publishable_key: str = ""
