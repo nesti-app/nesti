@@ -12,6 +12,34 @@
     "background_color": "#f9fafb",
     "theme_color": "#16a34a",
     "categories": ["lifestyle", "utilities"],
+    "shortcuts": [
+        {
+            "name": "Пошук",
+            "short_name": "Пошук",
+            "description": "Пошук по інвентарю (назва, код, QR)",
+            "url": "/search",
+            "icons": [
+                {
+                    "src": "/static/icons/icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        },
+        {
+            "name": "Новий предмет",
+            "short_name": "Додати",
+            "description": "Додати новий предмет",
+            "url": "/items/new",
+            "icons": [
+                {
+                    "src": "/static/icons/icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        }
+    ],
     "icons": [
         {
             "src": "/static/icons/icon-192.png",
