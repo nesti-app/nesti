@@ -40,12 +40,13 @@
                         <div x-show="open" x-transition class="absolute left-0 z-50 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
                             <div class="py-1">
                                 {% if current_user %}
-                                <a href="/categories" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Категорії</a>
-                                <a href="/tags" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Теги</a>
-                                <a href="/locations" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Локації</a>
-                                <a href="/items" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Предмети</a>
-                                <a href="/scan" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Сканувати</a>
-                                <a href="/search" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Пошук</a>
+                                <a href="/items" class="block px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100">Предмети</a>
+                                <a href="/scan" class="block px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100">Сканувати</a>
+                                <a href="/search" class="block px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100">Пошук</a>
+                                <div class="my-1 border-t border-gray-100"></div>
+                                <a href="/categories" class="block px-4 py-2 text-sm text-gray-500 hover:bg-gray-100">Категорії</a>
+                                <a href="/tags" class="block px-4 py-2 text-sm text-gray-500 hover:bg-gray-100">Теги</a>
+                                <a href="/locations" class="block px-4 py-2 text-sm text-gray-500 hover:bg-gray-100">Локації</a>
                                 {% else %}
                                 <a href="/auth/login" class="block px-4 py-2 text-sm text-indigo-600 hover:bg-gray-100">Увійти</a>
                                 {% endif %}
@@ -69,11 +70,13 @@
 
                     <div class="hidden md:flex md:items-center md:gap-4">
                         {% if current_user %}
-                        <a href="/categories" class="text-sm text-gray-700 hover:text-gray-900">Категорії</a>
-                        <a href="/tags" class="text-sm text-gray-700 hover:text-gray-900">Теги</a>
-                        <a href="/locations" class="text-sm text-gray-700 hover:text-gray-900">Локації</a>
-                        <a href="/items" class="text-sm text-gray-700 hover:text-gray-900">Предмети</a>
+                        <a href="/items" class="text-sm font-medium text-gray-900 hover:text-gray-900">Предмети</a>
                         <a href="/scan" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">Сканувати</a>
+                        <a href="/search" class="text-sm font-medium text-gray-900 hover:text-gray-900">Пошук</a>
+                        <span class="mx-2 h-4 w-px bg-gray-200"></span>
+                        <a href="/categories" class="text-sm text-gray-400 hover:text-gray-600">Категорії</a>
+                        <a href="/tags" class="text-sm text-gray-400 hover:text-gray-600">Теги</a>
+                        <a href="/locations" class="text-sm text-gray-400 hover:text-gray-600">Локації</a>
                         <button id="install-btn" onclick="installApp()" class="hidden rounded-md border border-green-300 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50">Встановити</button>
                         {% endif %}
                     </div>
