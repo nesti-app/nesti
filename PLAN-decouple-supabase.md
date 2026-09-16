@@ -62,40 +62,28 @@
 
 ---
 
-## Фаза 1 — Залежності та конфіг
-- `pyproject.toml`: прибрати `supabase`; додати `pwdlib[argon2]`, `aiosqlite`,
-  `pyotp` (TOTP-2FA); прибрати `supabase.*` з mypy-overrides.
-- `app/config.py`: видалити `supabase_*` поля і fallback-властивості;
-  додати `admin_email`, `admin_password`;
-  storage-поля привести до стандартних AWS-імен (+ `aws_endpoint_url` з
-  аліасом `S3_ENDPOINT_URL`, `s3_bucket_name`, `s3_force_path_style`).
-  Лишити `database_url`, `secret_key` (див. розділ «Конфігурація»).
-- **Config file**: розширити `SettingsConfigDict` на `SETTINGS_FILE` (шлях до
-  config-файлу, default `.env`; env-змінна `SETTINGS_FILE` має найвищий
-  пріоритет для вибору шляху). Всі налаштування мають приходити з
-  env/файлу/дефолтів — ніяких жорстко зашитих значень у коді.
-- Додати security-налаштування: `login_max_attempts` (default 5) та
-  `login_lockout_seconds` (default 900), `ip_throttle_per_minute` (default 20).
-- `pyproject.toml`: для throttling — за бажанням `limits` (sliding window), або
-  проста власна реалізація (dict + timestamps) без зайвих залежностей.
+## Фаза 1 — Залежності та конфіг ✅
+- `pyproject.toml`: **додано** `pwdlib[argon2]`, `aiosqlite`, `pyotp` (+ mypy-overrides);
+  `supabase` і `supabase.*`-override прибираються у Фазі 4 (код ще його використовує).
+- `app/config.py`: **додано** `admin_email`, `admin_password`, security-поля
+  (`login_max_attempts=5`, `login_lockout_seconds=900`, `ip_throttle_per_minute=20`),
+  AWS-стандартні storage-поля (з аліасами на старі `S3_*`), `SETTINGS_FILE`.
+  `supabase_*`-поля лишаються до Фази 4 (auth ще на Supabase) — адитивний PR.
+- Config file: **реалізовано** `SETTINGS_FILE` (шлях до config-файлу, default `.env`).
+- `.env.example`: оновлено новими змінними.
 
-## Фаза 1.5 — Config-файл та оркестрація
-- Переконатись, що жодна настройка не hardcoded: `secret_key`, `database_url`,
-  `*_url`, бакет, креденші — лише з env/файлу (у compose/`docker run` через
-  `-e`/`env_file`, у K8s через `env`/`envFrom`/Secret).
-- Додати smoke-тест: підняти `Settings()` з env, потім з файлу (і суміші) —
-  перевірити, що env перебиває файл, а файл — дефолти.
+## Фаза 1.5 — Config-файл та оркестрація ✅
+- `SETTINGS_FILE` підтримується в `get_settings()`; smoke-перевірка підтверджує
+  пріоритет env > файл > дефолти (перевірено вручну).
 
-## Фаза 2 — Storage: лишити тільки S3
-- `app/media/storage.py`: видалити `SupabaseStorageBackend`; фабрика завжди
-  повертає `S3StorageBackend` (без конфігу S3 — чітка помилка).
-- `_client_kwargs()`: використовувати стандартні AWS-поля; `endpoint_url` =
-  `aws_endpoint_url` (порожній → класичний AWS); `addressing_style` керується
-  `s3_force_path_style` (не завжди path).
-- Увімкнення storage = наявність `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`
-  (`s3_enabled`).
-- `tests/unit/test_storage.py`: прибрати тести Supabase-бекенду; оновити під
-  нові назви полів.
+## Фаза 2 — Storage: лишити тільки S3 ✅
+- `app/media/storage.py`: **видалено** `SupabaseStorageBackend`; фабрика повертає
+  `S3StorageBackend`, без креденшів — чіткий `RuntimeError`.
+- `_client_kwargs()`: стандартні AWS-поля; `endpoint_url` = `aws_endpoint_url`
+  (порожній → класичний AWS); `addressing_style` керується `s3_force_path_style`.
+- `s3_enabled` = наявність `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`.
+- `tests/unit/test_storage.py`: тести Supabase-бекенду видалено, оновлено під
+  нові поля.
 
 ## Фаза 3 — БД: Postgres + SQLite
 - `app/db/base.py`: `postgresql.UUID` → портативний `sa.Uuid`.
