@@ -6,7 +6,7 @@ Nesti is a server-rendered web application with progressive enhancement.
 
 The backend is a Python FastAPI application. The frontend uses Jinja2 templates with HTMX for interactivity, Tailwind CSS for styling, and minimal vanilla JavaScript for browser-only features (camera, QR scanning, image preview, PWA).
 
-The application is designed to be deployed as a serverless function on Vercel, with external PostgreSQL (Supabase) and external object storage (Supabase Storage). No local filesystem state is assumed in production.
+The application is designed to be deployed as a serverless function on Vercel, or as a Docker container, with external PostgreSQL (or SQLite) and external object storage (S3-compatible). No local filesystem state is assumed in production.
 
 ---
 
@@ -188,10 +188,10 @@ The application is designed to be deployed as a serverless function on Vercel, w
 | Validation       | Pydantic v2             |
 | ORM              | SQLAlchemy 2.x (async)  |
 | Migrations       | Alembic                 |
-| Database         | PostgreSQL              |
+| Database         | PostgreSQL or SQLite    |
 | Templating       | Jinja2                  |
-| Auth provider    | Supabase Auth           |
-| Object storage   | Supabase Storage        |
+| Auth             | Local (argon2 + JWT)    |
+| Object storage   | S3-compatible           |
 
 ### Frontend
 
@@ -311,13 +311,13 @@ Server-side enforcement. Never trust the client.
 
 The base application works without JavaScript. HTMX adds dynamic behavior (search results, form submissions, image previews) without shipping a full SPA framework. JavaScript is used only for features that genuinely require it (camera, QR scanning, file drag-and-drop, PWA).
 
-### 6.2 Supabase as External Service
+### 6.2 Local Authentication with Optional 2FA
 
-Supabase provides Auth and Storage. The application does not depend on Supabase-specific database functionality — it uses standard PostgreSQL via SQLAlchemy. This keeps the application portable.
+Authentication uses argon2 password hashing and HS256 JWT session cookies. No external auth service is required. TOTP two-factor authentication is optional per-user. Anti-bruteforce is enforced via per-account lockout in the database (shared across instances) and an in-process IP throttle.
 
 ### 6.3 No Local File Storage in Production
 
-Uploaded images are processed in-memory and sent to Supabase Storage. The server never writes user uploads to the local filesystem permanently. This is essential for Vercel's serverless model.
+Uploaded images are processed in-memory and sent to S3-compatible object storage. The server never writes user uploads to the local filesystem permanently. This is essential for Vercel's serverless model.
 
 ### 6.4 Access Scopes over Direct Role Checks
 
@@ -339,7 +339,7 @@ QR codes encode the stable item URL (`/item/<uuid>`). The UUID is immutable. QR 
 
 | Table                | Purpose                              |
 |----------------------|--------------------------------------|
-| `users`              | Application users (synced from Supabase Auth) |
+| `users`              | Application users (local auth, email+password) |
 | `items`              | Central inventory entity             |
 | `categories`         | Hierarchical item categories         |
 | `tags`               | Flat tag vocabulary                  |
@@ -385,31 +385,29 @@ GET    /api/v1/items/{id}/movements
 
 ## 9. Security Model
 
-- Authentication via Supabase Auth, abstracted behind an internal auth service
-- Session-based authentication for HTML routes
-- Token-based authentication for API routes
+- Local authentication (email + password, argon2 hashing)
+- Session-based authentication via signed JWT cookies (HS256, HttpOnly)
+- Optional TOTP two-factor authentication per user
+- Anti-bruteforce: per-account lockout after configurable failed attempts
+- In-process IP throttle on login endpoint
 - Authorization enforced server-side on every protected endpoint
 - CSRF protection on state-changing HTML routes
 - Content Security Policy headers
 - No secrets exposed to client-side JavaScript
 - Image upload validation (MIME, size, decompression bomb protection)
-- Rate limiting on authentication endpoints
 
 ---
 
 ## 10. Deployment Architecture
 
 ```
-Vercel (serverless)
-    ├── FastAPI application (Python runtime)
-    ├── Static assets (CDN)
-    └── Environment variables
-
-Supabase
-    ├── PostgreSQL database
-    ├── Auth service
-    └── Storage (images)
+Frontend (CDN / static)
+    └── FastAPI application (serverless or container)
+            ├── Database (PostgreSQL or SQLite)
+            └── Object storage (S3-compatible)
 ```
+
+Deployment is configuration-only: set `DATABASE_URL`, `SECRET_KEY`, `ADMIN_EMAIL`/`ADMIN_PASSWORD`, and `AWS_*`/`S3_BUCKET_NAME` variables and the same image/app runs anywhere — Vercel, DigitalOcean, AWS, bare metal.
 
 No persistent local state. No background workers. No local file storage in production.
 
@@ -418,18 +416,21 @@ No persistent local state. No background workers. No local file storage in produ
 ## 11. Development Workflow
 
 1. Clone repository
-2. Copy `.env.example` to `.env`, fill values
+2. Copy `.env.example` to `.env`, fill values (see README)
 3. `uv sync` — install dependencies
-4. `docker compose up -d` — start local PostgreSQL
-5. `uv run alembic upgrade head` — run migrations
-6. `uv run uvicorn app.main:app --reload` — start dev server
-7. Open `http://localhost:8000`
+4. `uv run uvicorn app.main:app --reload` — start dev server (SQLite by default, zero config)
+5. Open `http://localhost:8000`
+
+For PostgreSQL development, start a local database first:
+`docker compose up -d db` and set `DATABASE_URL` in `.env`.
+
+Migrations and admin bootstrap run automatically on startup.
 
 ### Code Quality
 
 ```bash
-uv run ruff check .        # Linting
-uv run ruff format --check .  # Formatting
-uv run mypy .              # Type checking
-uv run pytest              # Tests
+uv run ruff check app/ tests/        # Linting
+uv run ruff format --check .         # Formatting
+uv run mypy app/                     # Type checking
+uv run pytest                        # Tests (SQLite-powered, fast)
 ```
