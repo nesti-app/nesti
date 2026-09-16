@@ -85,20 +85,22 @@
 - `tests/unit/test_storage.py`: тести Supabase-бекенду видалено, оновлено під
   нові поля.
 
-## Фаза 3 — БД: Postgres + SQLite
-- `app/db/base.py`: `postgresql.UUID` → портативний `sa.Uuid`.
+## Фаза 3 — БД: Postgres + SQLite ✅
+- `app/db/base.py`: `postgresql.UUID` → портативний `sa.Uuid` (усі моделі).
 - `app/db/engine.py`: драйвер за URL (`postgres`→asyncpg, `sqlite`→aiosqlite);
-  для SQLite — `PRAGMA foreign_keys=ON` + StaticPool;
-  прибрати supabase-хак `ssl=require`; створити директорію для SQLite-файлу.
-- `migrations/versions/5ddce1d4cc9b`: прибрати `postgresql_nulls_not_distinct=False`.
-- Нова міграція: `users` — drop `supabase_id`, add `password_hash` (nullable),
+  для SQLite — `PRAGMA foreign_keys=ON` + StaticPool + `check_same_thread=False`;
+  прибрано supabase-хак `ssl=require`; авто-створення директорії для SQLite-файлу.
+- `migrations/versions/5ddce1d4cc9b`: прибрано `postgresql_nulls_not_distinct=False`.
+- `b2c3d4e5f6a7`, `5ddce1d4cc9b`, `8d0e3f2a1b4c`: переписано в batch-режимі
+  для сумісності з DDL SQLite (підтверджено `alembic upgrade head` на SQLite).
+- Нова міграція `36a81a10cf7a639c`: `users` — add `password_hash` (nullable),
   `totp_secret` (nullable TEXT; наявність = 2FA увімкнено), `failed_login_attempts`
-  (int, default 0), `locked_until` (nullable DateTimeUTC) для анти-брутфорсу.
-- `app/users/models.py` (`password_hash` замість `supabase_id`, + `totp_secret`),
-  `schemas.py` (без виводу `totp_secret`),
-  `service.py` (`get_user_by_email`, `set_password`, `set_totp_secret`,
+  (int, default 0), `locked_until` (nullable) для анти-брутфорсу.
+- `service.py` (`get_user_by_email`, `set_password`, `set_totp_secret`,
   `clear_totp_secret`, `register_failed_login`, `reset_login_attempts`,
-  `is_account_locked`; прибрати `ensure_user_exists`).
+  `is_account_locked`).
+- **Адитивне відхилення**: `supabase_id` та `ensure_user_exists` лишаються до
+  Фази 5 (drop винесуться туди разом з іншими supabase-залишками).
 
 ## Фаза 4 — Локальний auth
 - `app/auth/service.py` (переписати): `hash_password`/`verify_password` (argon2),
