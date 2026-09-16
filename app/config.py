@@ -34,19 +34,10 @@ class Settings(BaseSettings):
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
     supabase_jwt_secret: str = ""
-    supabase_storage_bucket: str = "inventory-images"
 
-    # S3-compatible object storage (currently used to talk to Supabase Storage
-    # over its S3 API for fully async I/O via aiobotocore). When `s3_endpoint_url`
-    # is empty, the legacy synchronous supabase-py client is used instead.
-    #
-    # Standard AWS env-var names (AWS_ACCESS_KEY_ID, AWS_ENDPOINT_URL, ...) are the
-    # canonical ones; the legacy S3_* spellings are accepted as aliases.
-    s3_endpoint_url: str = ""
-    s3_access_key_id: str = ""
-    s3_secret_access_key: str = ""
-    s3_region: str = "us-east-1"
-
+    # S3-compatible object storage (any provider: Supabase Storage, rustfs,
+    # MinIO, classic AWS, ...). Standard AWS env-var names are canonical;
+    # the legacy S3_* spellings are accepted as aliases via validation_alias.
     aws_access_key_id: str = Field(
         default="",
         validation_alias=AliasChoices("AWS_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID"),
@@ -68,15 +59,11 @@ class Settings(BaseSettings):
 
     @property
     def s3_enabled(self) -> bool:
-        return bool(
-            (self.aws_access_key_id or self.s3_access_key_id)
-            and (self.aws_secret_access_key or self.s3_secret_access_key)
-        )
+        return bool(self.aws_access_key_id and self.aws_secret_access_key)
 
     @property
     def storage_bucket(self) -> str:
-        """Effective bucket name: S3 bucket when S3 is enabled, else Supabase bucket."""
-        return self.s3_bucket_name or self.supabase_storage_bucket
+        return self.s3_bucket_name
 
     # Modern Supabase API keys (sb_publishable_... / sb_secret_...).
     # Preferred over the legacy anon / service_role JWT-based keys.
