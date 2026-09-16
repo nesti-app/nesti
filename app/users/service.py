@@ -170,14 +170,24 @@ async def clear_totp_secret(db: AsyncSession, user: User) -> None:
     await db.flush()
 
 
+def _utc_now_naive() -> datetime:
+    """Return current UTC time as a naive datetime (for SQLite compatibility)."""
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 async def is_account_locked(
     db: AsyncSession, user: User, *, now: datetime | None = None
 ) -> bool:
     """Return True when the account is temporarily locked due to failed logins."""
     if user.locked_until is None:
         return False
-    now = now or datetime.now(UTC)
-    if user.locked_until <= now:
+    now = now or _utc_now_naive()
+    locked = (
+        user.locked_until.replace(tzinfo=None)
+        if user.locked_until.tzinfo
+        else user.locked_until
+    )
+    if locked <= now:
         user.locked_until = None
         await db.flush()
         return False
@@ -189,7 +199,7 @@ async def register_failed_login(db: AsyncSession, user: User) -> None:
     settings = get_settings()
     user.failed_login_attempts += 1
     if user.failed_login_attempts >= settings.login_max_attempts:
-        user.locked_until = datetime.now(UTC) + timedelta(
+        user.locked_until = _utc_now_naive() + timedelta(
             seconds=settings.login_lockout_seconds
         )
     await db.flush()

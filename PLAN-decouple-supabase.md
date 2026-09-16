@@ -102,82 +102,44 @@
 - **Адитивне відхилення**: `supabase_id` та `ensure_user_exists` лишаються до
   Фази 5 (drop винесуться туди разом з іншими supabase-залишками).
 
-## Фаза 4 — Локальний auth
-- `app/auth/service.py` (переписати): `hash_password`/`verify_password` (argon2),
+## Фаза 4 — Локальний auth ✅
+- `app/auth/service.py` (переписано): `hash_password`/`verify_password` (pwdlib argon2),
   `create_session_token`/`verify_session_token` (HS256 JWT, `sub` = user.id, exp 7 дн.),
-  TOTP: `generate_totp_secret` / `totp_uri(email, secret)` / `verify_totp(secret, code)`
-  на `pyotp.TOTP(secret, interval=30, digits=6)`,
+  `create_pending_2fa_token`/`verify_pending_2fa_token` (exp 5 хв.),
+  TOTP: `generate_totp_secret` / `totp_uri` / `verify_totp` на `pyotp.TOTP(secret, interval=30, digits=6)`,
   `bootstrap_admin(db)` (upsert з env), dataclass `AuthUser(user_id, email)`.
-  Видалити весь Supabase API-шар.
+  Видалено весь Supabase API-шар (AuthService, ES256/JWKS, podman ключі).
 - `app/auth/middleware.py`: одна кука `nesti_session`; `set_session`/`get_session`
-  на своєму токені; прибрати refresh-логіку.
-- `app/auth/routes.py`: login POST перевіряє пароль локально; видалити
-  `/login/supabase` та `/callback`. **2FA-потік**: після правильного пароля, якщо
-  у користувача є `totp_secret` — не видавати куку одразу, а повертати форму
-  «ввести код» (крок 2) із короткочасним підписаним тимчасовим токеном
-  (`pending_2fa`, exp ~5 хв., прив'язаний до user.id); POST коду верифікує
-  `verify_totp` → видає `nesti_session`. Якщо 2FA вимкнена — кука одразу.
-- **Анти-брутфорс** (пароль і 2FA-крок): перед login перевіряємо
-  `is_account_locked()` (`locked_until` у майбутньому → відмова 423/429, не
-  доходячи до хешування — це економить CPU і не дає таймінг-сигналу).
-  Невірний пароль → `register_failed_login()` (інкремент `failed_login_attempts`;
-  на досягненні `login_max_attempts` — встановити `locked_until` = now +
-  `login_lockout_seconds`). Успішний пароль/2FA → `reset_login_attempts()`.
-  Помилка на OTP-кроці теж лічиться в `failed_login_attempts` того ж юзера;
-  `pending_2fa` — ім'yя токена, прив'язане до конкретного юзера, не дає
-  brute-force на інших. Увесь лічильник — у БД (спільний для всіх інстансів).
-- **IP-throttle** (опційно, окремо від акаунта): `ip_throttle_per_minute`
-  запитів login з однієї IP — простий sliding-window у пам'яті процесу
-  (dict[ip] → list[timestamps]); достатньо для одного контейнера, для
-  K8s/декількох реплік це не глобально — відмітити в документації (потребує
-  Redis/зовнішнього сторджу, в першу чергу покладаємось на anti-bruteforce
-  по акаунту в БД).
-- **Введення коду 2FA — «комірковий» OTP-input (як на популярних сайтах)**:
-  одна справжня (реальна для форми й автозаповнення) скрита `<input>`
-  з `inputmode="numeric"`, `autocomplete="one-time-code"`, `maxlength=6`,
-  `pattern="\d{6}"` + шість візуальних комірок поверх неї (одна цифра в одній).
-  Реалізація — Alpine.js (вже в `base.html`):
-  - значення скритої інпут-поля розбивається на 6 комірок реактивно
-    (одне джерело правди — реальний інпут, комірки — лише відображення);
-  - фокус/каретка — на реальному інпуті, активна комірка підсвічується
-    (Autofocus на відкритті форми);
-  - **Paste/Ctrl-V/вставити (десктоп і мобільний/PWA)**: один `paste`-обробник
-    → з тексту буфера лишаються лише цифри → вставляються в інпут → всі комірки
-    заповнюються миттєво і одразу сабмітиться форма (не треба тиснути по комірочках);
-  - посимвольне введення: цифра → наступна комірка стає активною; Backspace —
-    попередня; літеру/не-цифру ігноруємо;
-  - по досягненні 6 цифр — авто-сабміт форми на перевірку коду;
-- 2FA-налаштування у профілі (`templates/users/2fa.html`): увімкнути →
-  `generate_totp_secret` + показати QR (inline SVG через `qrcode`, без Pillow)
-  і `otpauth://totp/Nesti:<email>?secret=…&issuer=Nesti` + текстовий secret
-  (ручне введення); підтвердження — ввести поточний код (секрет зберігається
-  лише після успішної перевірки). Вимкнути → підтвердження паролем/кодом
-  видаляє `totp_secret`.
-- `app/dependencies.py`, `app/main.py`: `get_current_user` шукає користувача за
-  `user_id` з токена; перенести bootstrap-адміна в `lifespan`; прибрати
-  `try_refresh_session`.
-- `app/users/routes.py`: створення/зміна пароля → хеш у БД; **адмін-операції**:
-  скинути пароль користувачу та вимкнути його 2FA (`clear_totp_secret`);
-  розблокувати (скинути `failed_login_attempts`/`locked_until`);
-  видалення — тільки з БД.
-- `templates/auth/login.html`, `templates/users/*`: прибрати Supabase-згадки
-  (перевірити grep'ом); додати форму коду другого кроку та налаштування 2FA.
+  на своєму токені; без refresh-логіки; secure/samesite за замовчуванням.
+- `app/auth/routes.py`: login POST перевіряє пароль локально; видалено
+  `/login/supabase` та `/callback`.
+  **2FA-потік**: після правильного пароля, якщо є `totp_secret` — pending_2fa cookie
+  (exp 5 хв., прив'язаний до user.id); POST коду верифікує → видає `nesti_session`.
+- **Анти-брутфорс**: `is_account_locked`/`register_failed_login`/`reset_login_attempts`
+  з `_utc_now_naive()` для SQLite-сумісності.
+- **IP-throttle**: `ip_throttle_per_minute` (in-process sliding window).
+- **2FA-введення**: комірковий OTP-input (Alpine.js) в `login.html`.
+- **2FA-налаштування** в `templates/users/2fa.html`: generate → QR inline SVG → confirm
+  → disable (self + admin). `_totp_qr_svg` через `qrcode.SvgPathImage`.
+- `app/dependencies.py`: `get_current_user` шукає за `uuid.UUID(session.user.user_id)`,
+  `require_role(*roles)` typing-safe.
+- `app/main.py`: `bootstrap_admin` в `lifespan`; middleware DB-lookup only.
+- `app/users/routes.py`: admin unlock/disable-2fa/reset-password; local hash_password.
+- `templates/auth/login.html` + `templates/users/*`: без Supabase-згадок (grep-перевірено).
+- **SQLite datetime compatibility**: `_utc_now_naive()` для `locked_until` порівнянь.
 
-## Фаза 5 — Тести та документація
-- Переписати `tests/unit/test_auth.py` (login/verify/bootstrap), адаптувати
-  `test_admin.py` та що звертається до `ensure_user_exists`/`AuthUser(supabase_id=…)`.
-- Додати тести 2FA: вмикання (запит секрету → підтвердження кодом), логін з 2FA
-  (крок 1 пароль → крок 2 код; невірний код → 401, короткотривалий тимчасовий
-  токен), вимкнення адміном та самим користувачем; `totp_secret` не світиться в API.
-- Додати тести анти-брутфорсу: 5 невдалих паролів → акаунт заблокований → 429;
-  після lockout-часу спроби дозволені знову; успішний вхід скидає лічильник;
-  невірний 2FA-код теж інкрементує; адмін-розблокування працює.
-- Прогнати: ruff, mypy, pytest (SQLite як швидкий шлях; PG — валідація міграцій).
-- Оновити `README.md` / `ARCHITECTURE.md`: деплой у DO/AWS/Vercel/local — це просто
-  `DATABASE_URL` + `AWS_*` (+ `AWS_ENDPOINT_URL` за потреби, `S3_BUCKET_NAME`)
-  + `SECRET_KEY` + `ADMIN_EMAIL/ADMIN_PASSWORD`; опційно `LOGIN_MAX_ATTEMPTS` /
-  `LOGIN_LOCKOUT_SECONDS` / `IP_THROTTLE_PER_MINUTE` для анти-брутфорсу.
-- Оновити `.env.example` (якщо є) тими самими змінними.
+## Фаза 5 — Тести та документація ✅ (тести); документація — окрема Фаза 5.1
+- `tests/unit/test_auth.py` переписано (18 тестів): hash/verify, tokens, TOTP,
+  login flows (password + 2FA), anti-bruteforce (lockout, reset, wrong TOTP counts),
+  2FA enable/disable, profile, pages. Інтеграційні тести використовують in-memory
+  SQLite (`StaticPool`) з патчем `_get_session_factory`.
+- Тести 2FA: enable (secret → QR → confirm), login 2-step (pending cookie → code),
+  wrong code → `invalid_code`, disable self.
+- Тести анти-брутфорсу: lockout після `login_max_attempts`, успішний логін
+  скидає лічильник, невірний 2FA інкрементує `failed_login_attempts`.
+- `pytest` 129 passed, `ruff check` clean, `mypy app/` 48 помилок
+  (baseline; без нових у змінених файлах; `app/main.py:159` — baseline).
+- **Документація** (README/ARCHITECTURE) — у Фазі 5.1 окремо.
 
 ## Фаза 6 — Деплой та валідація
 - Оновити Vercel env: `DATABASE_URL` (тепер сам має містити `?sslmode=require`),

@@ -31,10 +31,6 @@
                     <dd class="mt-1 text-sm text-gray-900 font-mono">{{ user.id }}</dd>
                 </div>
                 <div>
-                    <dt class="text-sm font-medium text-gray-500">Supabase ID</dt>
-                    <dd class="mt-1 text-sm text-gray-900 font-mono">{{ user.supabase_id }}</dd>
-                </div>
-                <div>
                     <dt class="text-sm font-medium text-gray-500">Ім'я</dt>
                     <dd class="mt-1 text-sm text-gray-900">{{ user.display_name or '—' }}</dd>
                 </div>
@@ -56,6 +52,26 @@
                             <span class="text-green-600">Активний</span>
                         {% else %}
                             <span class="text-red-600">Деактивовано</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">2FA</dt>
+                    <dd class="mt-1 text-sm">
+                        {% if user.totp_secret %}
+                            <span class="text-green-600">Увімкнено</span>
+                        {% else %}
+                            <span class="text-gray-600">Вимкнено</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Заблокувань</dt>
+                    <dd class="mt-1 text-sm text-gray-900">
+                        {% if user.locked_until is not none %}
+                            <span class="text-orange-600">Заблоковано до {{ user.locked_until }}</span>
+                        {% else %}
+                            {{ user.failed_login_attempts }}
                         {% endif %}
                     </dd>
                 </div>
@@ -95,7 +111,36 @@
                         </button>
                     </form>
                     {% endif %}
+                    {% if user.locked_until is not none %}
+                    <form method="post" action="/admin/users/{{ user.id }}/unlock">
+                        <button type="submit" class="rounded border border-orange-300 px-3 py-1 text-xs font-medium text-orange-700 hover:bg-orange-50">
+                            Розблокувати
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if user.totp_secret and user.totp_secret != current_user.totp_secret %}
+                    <form method="post" action="/admin/users/{{ user.id }}/disable-2fa">
+                        <button type="submit" class="rounded border border-orange-300 px-3 py-1 text-xs font-medium text-orange-700 hover:bg-orange-50">
+                            Вимкнути 2FA
+                        </button>
+                    </form>
+                    {% endif %}
                 </div>
+
+                <h2 class="mt-6 mb-3 text-sm font-medium text-gray-700">Скидання пароля</h2>
+                <form method="post" action="/admin/users/{{ user.id }}/reset-password" class="flex gap-2">
+                    <input
+                        type="password"
+                        name="new_password"
+                        required
+                        minlength="8"
+                        placeholder="Новий пароль"
+                        class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                    <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-xs font-medium text-white hover:bg-indigo-500">
+                        Скинути
+                    </button>
+                </form>
             </div>
             {% endif %}
         </div>

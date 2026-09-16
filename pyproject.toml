@@ -77,7 +77,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["jinja2.*", "qrcode.*", "supabase.*", "aiofiles.*", "pillow_heif.*", "aiobotocore.*", "botocore.*", "pwdlib.*", "pyotp.*", "aiosqlite.*"]
+module = ["jinja2.*", "qrcode.*", "supabase.*", "aiofiles.*", "pillow_heif.*", "aiobotocore.*", "botocore.*", "pwdlib.*", "pyotp.*", "aiosqlite.*", "jose.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

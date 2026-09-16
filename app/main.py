@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -12,7 +13,7 @@ from jinja2 import Environment, FileSystemLoader
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
-from app.auth.middleware import get_session, refresh_cookies, try_refresh_session
+from app.auth.middleware import get_session
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -36,34 +37,22 @@ class UserContextMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         session = get_session(request)
-        refreshed = False
-
-        if session is None:
-            session = await try_refresh_session(request)
-            if session is not None:
-                refreshed = True
 
         request.state.current_user = None
         if session is not None:
             from app.db.engine import _get_session_factory
-            from app.users.service import ensure_user_exists
+            from app.users.service import get_user_by_id
 
             session_factory = _get_session_factory()
             async with session_factory() as db:
-                user = await ensure_user_exists(
-                    db,
-                    session.user.supabase_id,
-                    session.user.email,
-                )
-                if user.is_active:
+                try:
+                    user = await get_user_by_id(db, uuid.UUID(session.user.user_id))
+                except Exception:
+                    user = None
+                if user is not None and user.is_active:
                     request.state.current_user = user
-                await db.commit()
 
         response = await call_next(request)
-
-        if refreshed:
-            refresh_cookies(response, session)
-
         return response
 
 
@@ -76,9 +65,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
         await run_migrations()
 
-    from app.auth.service import auth_service
+    from app.auth.service import bootstrap_admin
+    from app.db.engine import _get_session_factory
 
-    await auth_service.load_jwks()
+    session_factory = _get_session_factory()
+    async with session_factory() as db:
+        await bootstrap_admin(db)
     yield
     logger.info("Shutting down application")
 
