@@ -22,24 +22,14 @@ def test_async_database_url_normalizes_driver() -> None:
     )
 
 
-def test_async_database_url_adds_ssl_for_supabase() -> None:
-    """Supabase Cloud URLs get ssl=require added for TLS."""
-    result = _async_database_url(
-        "postgresql://postgres.abc:pw@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-    )
-    assert result.startswith("postgresql+asyncpg://")
-    assert "ssl=require" in result
-    assert "pgbouncer=true" in result
-
-    # Existing ssl should not be duplicated
-    result2 = _async_database_url(
-        "postgresql+asyncpg://u:p@db.x.supabase.co:5432/postgres?ssl=require"
-    )
-    assert result2.count("ssl") == 1
+def test_async_database_url_normalizes_sqlite_driver() -> None:
+    """Plain sqlite URLs are rewritten to use the aiosqlite driver."""
+    assert _async_database_url("sqlite:///./data/nesti.db") == "sqlite+aiosqlite:///./data/nesti.db"
+    assert _async_database_url("sqlite+aiosqlite:///./data/nesti.db") == "sqlite+aiosqlite:///./data/nesti.db"
 
 
 def test_async_database_url_keeps_local_url_unchanged() -> None:
-    """Local/non-Supabase URLs only get the driver normalized, no SSL forced."""
+    """Local/non-Supabase URLs only get the driver normalized, no forced SSL."""
     assert _async_database_url(
         "postgresql://postgres:postgres@localhost:5432/db"
     ) == "postgresql+asyncpg://postgres:postgres@localhost:5432/db"

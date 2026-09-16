@@ -3,8 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -38,7 +37,7 @@ class AccessScopeRule(UUIDPrimaryKeyMixin, Base):
     __table_args__ = (Index("ix_access_scope_rules_scope_id", "scope_id"),)
 
     scope_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("access_scopes.id", ondelete="CASCADE"), nullable=False
+        Uuid, ForeignKey("access_scopes.id", ondelete="CASCADE"), nullable=False
     )
     rule_type: Mapped[str] = mapped_column(String, nullable=False)
     rule_value: Mapped[str] = mapped_column(String, nullable=False)
@@ -54,7 +53,7 @@ class AccessScopePermission(UUIDPrimaryKeyMixin, Base):
     __table_args__ = (Index("ix_access_scope_permissions_scope_id", "scope_id"),)
 
     scope_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("access_scopes.id", ondelete="CASCADE"), nullable=False
+        Uuid, ForeignKey("access_scopes.id", ondelete="CASCADE"), nullable=False
     )
     permission: Mapped[str] = mapped_column(String, nullable=False)
 
@@ -72,10 +71,10 @@ class AccessScopeUser(UUIDPrimaryKeyMixin, Base):
     )
 
     scope_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("access_scopes.id", ondelete="CASCADE"), nullable=False
+        Uuid, ForeignKey("access_scopes.id", ondelete="CASCADE"), nullable=False
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

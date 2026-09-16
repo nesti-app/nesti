@@ -14,9 +14,9 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    Uuid,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -38,13 +38,13 @@ class Item(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     short_code: Mapped[str] = mapped_column(String(8), nullable=False, unique=True, index=True)
 
     category_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True
+        Uuid, ForeignKey("categories.id"), nullable=True
     )
     location_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True
+        Uuid, ForeignKey("locations.id"), nullable=True
     )
     parent_item_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("items.id"), nullable=True
+        Uuid, ForeignKey("items.id"), nullable=True
     )
 
     manufacturer: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -59,10 +59,10 @@ class Item(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        Uuid, ForeignKey("users.id"), nullable=True
     )
     updated_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        Uuid, ForeignKey("users.id"), nullable=True
     )
 
     category = relationship("Category", back_populates="items", lazy="selectin")
@@ -100,7 +100,7 @@ class ItemAttribute(UUIDPrimaryKeyMixin, Base):
     __table_args__ = (Index("ix_item_attributes_item_id", "item_id"),)
 
     item_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), nullable=False
+        Uuid, ForeignKey("items.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
     value: Mapped[str] = mapped_column(String, nullable=False)
@@ -122,17 +122,17 @@ class ItemRelationship(UUIDPrimaryKeyMixin, Base):
     )
 
     source_item_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), nullable=False
+        Uuid, ForeignKey("items.id", ondelete="CASCADE"), nullable=False
     )
     target_item_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), nullable=False
+        Uuid, ForeignKey("items.id", ondelete="CASCADE"), nullable=False
     )
     relationship_type: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        Uuid, ForeignKey("users.id"), nullable=True
     )
 
     source_item = relationship("Item", foreign_keys=[source_item_id], lazy="selectin")
@@ -150,19 +150,19 @@ class ItemMovement(UUIDPrimaryKeyMixin, Base):
     )
 
     item_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), nullable=False
+        Uuid, ForeignKey("items.id", ondelete="CASCADE"), nullable=False
     )
     from_location_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True
+        Uuid, ForeignKey("locations.id"), nullable=True
     )
     to_location_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True
+        Uuid, ForeignKey("locations.id"), nullable=True
     )
     moved_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     moved_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        Uuid, ForeignKey("users.id"), nullable=True
     )
     reason: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

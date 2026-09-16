@@ -41,12 +41,14 @@ def upgrade() -> None:
             {"code": code, "id": item_id},
         )
 
-    op.alter_column("items", "short_code", nullable=False)
-    op.create_unique_constraint("uq_items_short_code", "items", ["short_code"])
-    op.create_index("ix_items_short_code", "items", ["short_code"])
+    with op.batch_alter_table("items") as batch_op:
+        batch_op.alter_column("short_code", nullable=False)
+        batch_op.create_unique_constraint("uq_items_short_code", ["short_code"])
+        batch_op.create_index("ix_items_short_code", ["short_code"])
 
 
 def downgrade() -> None:
-    op.drop_index("ix_items_short_code", table_name="items")
-    op.drop_constraint("uq_items_short_code", "items", type_="unique")
+    with op.batch_alter_table("items") as batch_op:
+        batch_op.drop_index("ix_items_short_code")
+        batch_op.drop_constraint("uq_items_short_code", type_="unique")
     op.drop_column("items", "short_code")
