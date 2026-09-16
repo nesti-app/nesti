@@ -26,6 +26,9 @@ dependencies = [
     "python-dotenv>=1.0,<2",
     "aiofiles>=24,<25",
     "aiobotocore>=2.15,<3",
+    "pwdlib[argon2]>=0.3.1",
+    "aiosqlite>=0.22.1",
+    "pyotp>=2.10.0",
 ]
 
 [project.optional-dependencies]
@@ -74,7 +77,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["jinja2.*", "qrcode.*", "supabase.*", "aiofiles.*", "pillow_heif.*", "aiobotocore.*", "botocore.*"]
+module = ["jinja2.*", "qrcode.*", "supabase.*", "aiofiles.*", "pillow_heif.*", "aiobotocore.*", "botocore.*", "pwdlib.*", "pyotp.*", "aiosqlite.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

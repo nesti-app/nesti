@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +12,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     app_env: str = "development"
@@ -17,6 +20,15 @@ class Settings(BaseSettings):
     secret_key: str = ""
 
     database_url: str = ""
+
+    # Bootstrap admin: first-start upsert from env when using local auth.
+    admin_email: str = ""
+    admin_password: str = ""
+
+    # Anti-bruteforce on login (per-account lockout + optional IP throttle).
+    login_max_attempts: int = 5
+    login_lockout_seconds: int = 900
+    ip_throttle_per_minute: int = 20
 
     supabase_url: str = ""
     supabase_anon_key: str = ""
@@ -27,16 +39,38 @@ class Settings(BaseSettings):
     # S3-compatible object storage (currently used to talk to Supabase Storage
     # over its S3 API for fully async I/O via aiobotocore). When `s3_endpoint_url`
     # is empty, the legacy synchronous supabase-py client is used instead.
+    #
+    # Standard AWS env-var names (AWS_ACCESS_KEY_ID, AWS_ENDPOINT_URL, ...) are the
+    # canonical ones; the legacy S3_* spellings are accepted as aliases.
     s3_endpoint_url: str = ""
     s3_access_key_id: str = ""
     s3_secret_access_key: str = ""
-    s3_bucket_name: str = ""
     s3_region: str = "us-east-1"
+
+    aws_access_key_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("AWS_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID"),
+    )
+    aws_secret_access_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("AWS_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY"),
+    )
+    aws_default_region: str = Field(
+        default="us-east-1",
+        validation_alias=AliasChoices("AWS_DEFAULT_REGION", "S3_REGION"),
+    )
+    aws_endpoint_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("AWS_ENDPOINT_URL", "S3_ENDPOINT_URL"),
+    )
+    s3_bucket_name: str = Field(default="", validation_alias="S3_BUCKET_NAME")
+    s3_force_path_style: bool = Field(default=True, validation_alias="S3_FORCE_PATH_STYLE")
 
     @property
     def s3_enabled(self) -> bool:
         return bool(
-            self.s3_endpoint_url and self.s3_access_key_id and self.s3_secret_access_key
+            (self.aws_access_key_id or self.s3_access_key_id)
+            and (self.aws_secret_access_key or self.s3_secret_access_key)
         )
 
     @property
@@ -75,4 +109,7 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    env_file = os.environ.get("SETTINGS_FILE", "").strip()
+    if env_file:
+        return Settings(_env_file=env_file)
     return Settings()
