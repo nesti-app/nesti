@@ -131,7 +131,6 @@ async def test_scan_page_renders(client: AsyncClient) -> None:
     async def override_user():
         return User(
             id=uuid.uuid4(),
-            supabase_id="test-sb-id",
             email="test@example.com",
             role="editor",
             display_name="Test",

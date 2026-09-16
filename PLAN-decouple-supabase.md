@@ -141,6 +141,28 @@
   (baseline; без нових у змінених файлах; `app/main.py:159` — baseline).
 - **Документація** (README/ARCHITECTURE) — у Фазі 5.1 окремо.
 
+## Фаза 5.1 — Документація ✅
+- `README.md`: прибрано Supabase-розділи; tech stack (local auth, SQLite/Postgres,
+  S3); Quick Start (SQLite zero-setup); повний довідник env vars;
+  локальний запуск; деплой на Vercel без Supabase.
+- `ARCHITECTURE.md`: локальна auth-модель (argon2 + JWT + TOTP + anti-bruteforce),
+  SQLite/PostgreSQL, S3 storage, спрощена deployment-архітектура.
+- `.env.example`: прибрані `SUPABASE_*`; `DATABASE_URL` за замовчуванням — SQLite.
+
+## Фаза 5.2 — Прибрати supabase-залишки ✅
+- `app/users/models.py`, `users/schemas.py` (UserResponse), `users/service.py`:
+  прибрано `supabase_id`, `get_user_by_supabase_id`, `ensure_user_exists`,
+  параметр `supabase_id` у `create_user`.
+- `app/auth/service.py`: `bootstrap_admin` без `supabase_id`.
+- `app/config.py`: прибрано `supabase_*` поля та `effective_publishable_key` /
+  `effective_secret_key`.
+- `pyproject.toml`: прибрано зависимість `supabase>=2.12,<3` та mypy-override
+  `supabase.*`; `uv sync` з `--extra dev`.
+- Міграція `47f1e2c6d9a5`: drop `supabase_id` з `users` (batch-режим),
+  підтверджено `alembic upgrade head` на свіжій SQLite.
+- `tests/`: прибрано `supabase_id` із фікстур; видалено `supabase/` (CLI config).
+- Перевірки: `pytest` 129 passed, `ruff` clean, `mypy` 48 (baseline без нових).
+
 ## Фаза 6 — Деплой та валідація
 - Оновити Vercel env: `DATABASE_URL` (тепер сам має містити `?sslmode=require`),
   прибрати `SUPABASE_*`, додати `ADMIN_EMAIL`/`ADMIN_PASSWORD`.

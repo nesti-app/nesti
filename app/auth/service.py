@@ -126,7 +126,6 @@ async def bootstrap_admin(db: AsyncSession) -> None:
     if user is None:
         db.add(
             User(
-                supabase_id=f"bootstrap-{settings.admin_email}",
                 email=settings.admin_email,
                 password_hash=hash_password(settings.admin_password),
                 role="admin",

@@ -27,7 +27,6 @@ async def test_admin_index_renders(client: AsyncClient) -> None:
     async def override_user():
         return User(
             id=uuid.uuid4(),
-            supabase_id="test-sb-id",
             email="admin@test.com",
             role="admin",
             display_name="Admin",

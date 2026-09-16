@@ -348,7 +348,7 @@ QR codes encode the stable item URL (`/item/<uuid>`). The UUID is immutable. QR 
 | `item_attributes`    | Key-value characteristics per item   |
 | `item_relationships` | Connections between items            |
 | `item_movements`     | Location change history              |
-| `item_images`        | Image metadata (files in Supabase Storage) |
+| `item_images`        | Image metadata (files in S3-compatible storage) |
 | `access_scopes`      | Named permission scopes              |
 | `access_scope_rules` | Rules defining scope item coverage   |
 | `access_scope_permissions` | Permissions granted within scope |

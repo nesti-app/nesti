@@ -11,7 +11,6 @@ from app.db.base import Base, UUIDPrimaryKeyMixin
 class User(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "users"
 
-    supabase_id: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String, nullable=True)

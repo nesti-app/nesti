@@ -48,24 +48,16 @@ async def get_user_by_id(db: AsyncSession, user_id: uuid.UUID) -> User:
     return user
 
 
-async def get_user_by_supabase_id(db: AsyncSession, supabase_id: str) -> User | None:
-    """Get a user by Supabase ID."""
-    result = await db.execute(select(User).where(User.supabase_id == supabase_id))
-    return result.scalar_one_or_none()
-
-
 async def create_user(
     db: AsyncSession,
     data: UserCreate,
-    supabase_id: str | None = None,
 ) -> User:
-    """Create a new user. supabase_id comes from Supabase Auth after invite/signup."""
+    """Create a new user."""
     existing = await db.execute(select(User).where(User.email == data.email))
     if existing.scalar_one_or_none() is not None:
         raise ConflictError("User with this email already exists")
 
     user = User(
-        supabase_id=supabase_id or str(uuid.uuid4()),
         email=data.email,
         display_name=data.display_name,
         role=data.role,
@@ -110,35 +102,6 @@ async def reactivate_user(db: AsyncSession, user_id: uuid.UUID) -> User:
     """Reactivate a deactivated user."""
     user = await get_user_by_id(db, user_id)
     user.is_active = True
-    await db.flush()
-    await db.refresh(user)
-    return user
-
-
-async def ensure_user_exists(
-    db: AsyncSession,
-    supabase_id: str,
-    email: str,
-) -> User:
-    """Ensure a user record exists for a Supabase Auth user. Creates if missing.
-
-    The very first user in an empty database is bootstrapped as an admin
-    (first-login bootstrap). Subsequent auto-created users default to viewer.
-    """
-    user = await get_user_by_supabase_id(db, supabase_id)
-    if user is not None:
-        return user
-
-    result = await db.execute(select(func.count()).select_from(User))
-    total = result.scalar_one()
-
-    user = User(
-        supabase_id=supabase_id,
-        email=email,
-        role="admin" if total == 0 else "viewer",
-        is_active=True,
-    )
-    db.add(user)
     await db.flush()
     await db.refresh(user)
     return user

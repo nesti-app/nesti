@@ -129,7 +129,6 @@ async def _create_user(
 ) -> User:
     async with factory() as db:
         user = User(
-            supabase_id=str(uuid.uuid4()),
             email=email,
             password_hash=hash_password(password),
             role=role,

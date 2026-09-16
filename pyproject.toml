@@ -19,7 +19,6 @@ dependencies = [
     "python-multipart>=0.0.18",
     "httpx>=0.28,<1",
     "python-jose[cryptography]>=3.3,<4",
-    "supabase>=2.12,<3",
     "Pillow>=11,<12",
     "pillow-heif>=1,<2",
     "qrcode[pil]>=8,<9",
@@ -77,7 +76,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["jinja2.*", "qrcode.*", "supabase.*", "aiofiles.*", "pillow_heif.*", "aiobotocore.*", "botocore.*", "pwdlib.*", "pyotp.*", "aiosqlite.*", "jose.*"]
+module = ["jinja2.*", "qrcode.*", "aiofiles.*", "pillow_heif.*", "aiobotocore.*", "botocore.*", "pwdlib.*", "pyotp.*", "aiosqlite.*", "jose.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
