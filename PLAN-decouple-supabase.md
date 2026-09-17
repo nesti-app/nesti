@@ -169,7 +169,7 @@
 - Commit+push → перевірити на проді: логін адміна, фото продовжують віддаватися
   через S3, CRUD предметів/користувачів.
 
-## Фаза 7 — Docker / локальний запуск
+## Фаза 7 — Docker / локальний запуск ✅
 - `Dockerfile`: Python 3.13-slim; встановлення залежностей з `pyproject.toml`;
   копіювання `app/`, `migrations/`, `static/`, `templates/`; запуск
   `uvicorn app.main:app`; `HEALTHCHECK` на `/health`; non-root користувач.
@@ -177,30 +177,23 @@
 - Контейнер «один для всіх середовищ»: конфіг — лише через env/`SETTINGS_FILE`;
   в Kubernetes той самий образ: ConfigMap/Secret → `env` (або змонтований файл
   конфігу на шлях `SETTINGS_FILE`). Жодних build-аргументів для налаштувань.
-- `docker-compose.yaml` (сумісний із podman-compose):
-  - `app`: build з Dockerfile, порт `8000`, `depends_on` → `db` (healthy) + `rustfs`,
-    env береться з `.env`.
-  - `db` (`postgres:16-alpine`): volume `pgdata`, env
-    `POSTGRES_USER/PASSWORD/DB`, healthcheck `pg_isready`.
-  - `rustfs` (`rustfs/rustfs:latest`): S3 API на `9000`, консоль на `9001`,
-    volume `rustfs-data`; env `RUSTFS_ACCESS_KEY/SECRET_KEY/ADDRESS/CONSOLE_*`;
-    пермісія директорій під UID `10001`; healthcheck `/health`.
-  - Профіль `sqlite`: `DATABASE_URL=sqlite+aiosqlite:///./data/nesti.db`,
-    сервіс `db` не потрібен.
-  - S3-реквізити спільно для app і rustfs:
-    `AWS_ENDPOINT_URL=http://rustfs:9000`,
-    `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` (=`RUSTFS_ACCESS_KEY`/`RUSTFS_SECRET_KEY`),
-    `S3_BUCKET_NAME=inventory-images`, `S3_FORCE_PATH_STYLE=true` (path-style —
-    вже в `storage.py`).
-- Ініціалізація: під час старту `run_migrations()` на обрану БД; створення
-  бакету `inventory-images` — auto-ensure у `S3StorageBackend` на старті або
-  init-container.
-- Документація в `README.md`: розділ «Локальний запуск» — `podman-compose up -d`,
-  дефолтні креденші rustfs (`rustfsadmin`), створення бакету, доступ на
-  `http://localhost:8000`, адмін-бутстрап із `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
-- Розділ «Конфігурація» в `README.md`: як передавати налаштування
-  (env / `.env` / `SETTINGS_FILE`) для `docker run`, docker-compose і Kubernetes
-  (приклад: створення `Secret` + `envFrom` у pod).
+- `compose.yaml` (сумісний із podman-compose): app + `db` (healthy) + `rustfs`;
+  `compose.sqlite.yaml` (SQLite-варіант) — окремий файл, а не профіль, бо
+  podman-compose 1.6.0 не підтримує `profiles` разом із `depends_on`
+  (KeyError `'db'`).
+- S3-реквізити спільно для app і rustfs через `${AWS_ACCESS_KEY_ID:-rustfsadmin}`
+  і `${AWS_SECRET_ACCESS_KEY:-rustfssecret}`.
+- Ініціалізація: під час старту `run_migrations()` на обрану БД; бакет
+  `inventory-images` — auto-ensure у `S3StorageBackend` на старті (fail-safe,
+  щоб недоступність S3 не валила старт контейнера).
+- Документація в `README.md`: обидва compose-варіанти, дефолтні креденші rustfs,
+  зупинка/дані, «Конфігурація» (env / `.env` / `SETTINGS_FILE`, `docker run`,
+  Kubernetes-приклад).
+- Валідовано на обох БД: міграції, адмін-бутстрап, логін, CRUD предметів,
+  завантаження/віддача/видалення фото через rustfs.
+- Виправлено по дорозі: попередній баг `create_item` (short_code ставився після
+  flush → NULL constraint), а також Postgres-only дефолт `sa.text('now()')` у
+  початковій міграції → замінено на портабельний `CURRENT_TIMESTAMP`.
 
 ## Ризики/нюанси
 - Існуючі користувачі prod лишаються (email/роль), але паролі заново

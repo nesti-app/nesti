@@ -39,7 +39,7 @@ A modern web application for managing a personal inventory of physical objects l
 - [Git](https://git-scm.com/)
 - [Python 3.13+](https://www.python.org/)
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
-- [Docker](https://docs.docker.com/get-docker/) or [Podman](https://podman.io/) (optional, for PostgreSQL)
+- [Docker](https://docs.docker.com/get-docker/) or [Podman](https://podman.io/) + `compose` plugin (optional, for Docker Compose)
 - [Node.js](https://nodejs.org/) (only if building Tailwind CSS locally)
 - [Vercel account](https://vercel.com/) (for production deployment)
 
@@ -91,7 +91,86 @@ ADMIN_PASSWORD=your-secure-password
 uv run uvicorn app.main:app --reload
 ```
 
-Migrations and admin bootstrap run automatically on first request.
+Migrations and admin bootstrap run automatically on startup.
+
+## Docker Compose
+
+The project ships two compose setups:
+
+- **[compose.yaml](compose.yaml)** — full stack: `app` + PostgreSQL (`db`) + S3-compatible object storage (`rustfs`)
+- **[compose.sqlite.yaml](compose.sqlite.yaml)** — lightweight: `app` (SQLite) + `rustfs` (no PostgreSQL)
+
+Both use your `.env` for configuration (see [Environment Variables](#environment-variables)).
+
+### Full stack (PostgreSQL + S3)
+
+```bash
+cp .env.example .env
+# Edit .env: set SECRET_KEY, ADMIN_EMAIL, ADMIN_PASSWORD
+# Optional: set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY to override the default
+# rustfs credentials (defaults: rustfsadmin / rustfssecret).
+
+podman compose up -d --build
+# or: docker compose up -d --build
+```
+
+- App: [http://localhost:8000](http://localhost:8000)
+- S3 API (rustfs): [http://localhost:9000](http://localhost:9000)
+
+On first start the app:
+1. waits for PostgreSQL to become healthy,
+2. applies Alembic migrations,
+3. bootstraps the admin user from `ADMIN_EMAIL` / `ADMIN_PASSWORD`,
+4. auto-creates the S3 bucket from `S3_BUCKET_NAME` (default `inventory-images`) if missing.
+
+### SQLite + S3 (no PostgreSQL)
+
+```bash
+cp .env.example .env
+# .env.example already defaults DATABASE_URL to sqlite+aiosqlite:///./data/nesti.db
+
+podman compose -f compose.sqlite.yaml up -d --build
+# or: docker compose -f compose.sqlite.yaml up -d --build
+```
+
+SQLite data is kept in the `nestidata` volume (`/app/data/nesti.db`).
+
+### Stopping and data
+
+```bash
+podman compose down        # stop containers
+podman compose down -v     # also delete volumes (db + S3 data + SQLite data)
+```
+
+Default provider credentials (rustfs): access key `rustfsadmin`, secret key `rustfssecret`.
+Override them via `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` in `.env` — the same
+values are passed to both `app` and `rustfs`. Do not use the defaults in production.
+
+### Configuration via env vs config file
+
+Config resolution order: **real environment variables > settings file > code defaults**.
+
+- Non-container (bare metal): values come from your shell env or from the `.env` file
+  (or any env-file via `SETTINGS_FILE`). Real env vars always win.
+- Docker Compose: `.env` is passed to the `app` container; use different `.env` files
+  per environment if needed:
+  ```bash
+  SETTINGS_FILE=/other.env docker compose up -d
+  ```
+- Single container / `docker run`: pass variables directly:
+  ```bash
+  docker run -d --name nesti -p 8000:8000 \
+    -e DATABASE_URL="postgresql+asyncpg://..." \
+    -e SECRET_KEY="..." \
+    -e ADMIN_EMAIL="admin@example.com" \
+    -e ADMIN_PASSWORD="..." \
+    -e AWS_ENDPOINT_URL="http://host.docker.internal:9000" \
+    -e AWS_ACCESS_KEY_ID="rustfsadmin" \
+    -e AWS_SECRET_ACCESS_KEY="rustfssecret" \
+    -e S3_FORCE_PATH_STYLE="true" \
+    nesti
+  ```
+- Kubernetes: mount secrets/ConfigMap values as env; the app name is irrelevant to config.
 
 ## Environment Variables
 

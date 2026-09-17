@@ -59,8 +59,9 @@ class UserContextMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_logging()
-    logger.info("Starting application (env=%s)", get_settings().app_env)
-    if get_settings().database_url:
+    settings = get_settings()
+    logger.info("Starting application (env=%s)", settings.app_env)
+    if settings.database_url:
         from app.db.migrate import run_migrations
 
         await run_migrations()
@@ -71,6 +72,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     session_factory = _get_session_factory()
     async with session_factory() as db:
         await bootstrap_admin(db)
+
+    if settings.s3_enabled:
+        from app.media.storage import get_storage_backend
+
+        backend = get_storage_backend()
+        try:
+            await backend.ensure_bucket()
+        except Exception:
+            logger.exception("S3 bucket creation failed; continuing startup")
+
     yield
     logger.info("Shutting down application")
 

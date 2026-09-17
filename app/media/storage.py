@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from botocore.exceptions import ClientError
 
@@ -21,6 +20,8 @@ class StorageBackend(Protocol):
     async def delete(self, paths: list[str]) -> None: ...
 
     async def signed_url(self, path: str, expires_in: int = 3600) -> str: ...
+
+    async def ensure_bucket(self) -> None: ...
 
 
 class S3StorageBackend:
@@ -56,6 +57,20 @@ class S3StorageBackend:
         from aiobotocore.session import get_session
 
         return get_session().create_client("s3", **self._client_kwargs())
+
+    async def ensure_bucket(self) -> None:
+        """Create the bucket if it does not exist (best-effort)."""
+        try:
+            async with await self._client() as client:
+                await client.head_bucket(Bucket=self._bucket)
+        except ClientError as exc:
+            error_code = exc.response["Error"].get("Code")
+            if error_code in ("404", "NoSuchBucket"):
+                async with await self._client() as client:
+                    await client.create_bucket(Bucket=self._bucket)
+                logger.info("Created S3 bucket: %s", self._bucket)
+            else:
+                raise
 
     async def upload(self, path: str, data: bytes, content_type: str) -> None:
         try:
@@ -123,12 +138,13 @@ class S3StorageBackend:
     async def signed_url(self, path: str, expires_in: int = 3600) -> str:
         try:
             async with await self._client() as client:
-                return await asyncio.to_thread(
-                    client.generate_presigned_url,
+                # aiobotocore's generate_presigned_url is async (returns a coroutine).
+                url = await client.generate_presigned_url(
                     "get_object",
                     Params={"Bucket": self._bucket, "Key": path},
                     ExpiresIn=expires_in,
                 )
+                return cast(str, url)
         except Exception:
             logger.exception(
                 "S3 signed_url failed (endpoint=%s bucket=%s key=%s)",
