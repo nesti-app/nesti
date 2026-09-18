@@ -58,6 +58,12 @@ async def move_item(
     return movement
 
 
+async def delete_movement(db: AsyncSession, movement_id: uuid.UUID) -> None:
+    movement = await get_movement_by_id(db, movement_id)
+    await db.delete(movement)
+    await db.flush()
+
+
 async def get_item_movements(
     db: AsyncSession,
     item_id: uuid.UUID,

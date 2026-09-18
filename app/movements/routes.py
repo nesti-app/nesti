@@ -3,22 +3,21 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from jinja2 import Environment
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.exceptions import ForbiddenError
+from app.common.exceptions import ForbiddenError, NotFoundError
 from app.db.engine import get_db
 from app.dependencies import get_current_user
 from app.items.service import get_item_by_id
-from app.locations.service import list_locations
-from app.movements.service import get_item_movements, move_item
+from app.movements.service import delete_movement, get_item_movements, get_movement_by_id
 from app.users.models import User
 
 router = APIRouter(tags=["movements"])
 
 
-async def _check_move_permission(
+async def _check_edit_permission(
     db: AsyncSession,
     user: User,
     item_id: uuid.UUID,
@@ -27,9 +26,9 @@ async def _check_move_permission(
         return
     from app.access.service import user_has_item_permission
 
-    has = await user_has_item_permission(db, user.id, item_id, "move")
+    has = await user_has_item_permission(db, user.id, item_id, "edit")
     if not has:
-        raise ForbiddenError("You do not have permission to move this item")
+        raise ForbiddenError("You do not have permission to edit this item's movements")
 
 
 async def _check_view_permission(
@@ -46,46 +45,34 @@ async def _check_view_permission(
         raise ForbiddenError("You do not have permission to view this item's movements")
 
 
-@router.get("/items/{item_id}/move", response_class=HTMLResponse)
-async def move_form(
+@router.post("/items/{item_id}/movements/{movement_id}/delete", response_class=HTMLResponse)
+async def movement_delete(
     request: Request,
     item_id: uuid.UUID,
+    movement_id: uuid.UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
-    item = await get_item_by_id(db, item_id)
-    await _check_move_permission(db, user, item_id)
-    locations, _ = await list_locations(db)
+    await get_item_by_id(db, item_id)
+    await _check_edit_permission(db, user, item_id)
 
-    jinja_env: Environment = request.app.state.jinja_env
-    template = jinja_env.get_template("movements/_move_form.html")
-    html = template.render(item=item, locations=locations, current_user=user)
-    return HTMLResponse(content=html)
-
-
-@router.post("/items/{item_id}/move")
-async def move_submit(
-    request: Request,
-    item_id: uuid.UUID,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> RedirectResponse:
-    item = await get_item_by_id(db, item_id)
-    await _check_move_permission(db, user, item_id)
-
-    form = await request.form()
-    to_location_raw = form.get("to_location_id", "")
-    to_location_id = uuid.UUID(str(to_location_raw)) if to_location_raw else None
-    reason = str(form.get("reason", "")).strip() or None
-    notes = str(form.get("notes", "")).strip() or None
-
-    await move_item(db, item.id, to_location_id, reason, notes, user.id)
+    movement = await get_movement_by_id(db, movement_id)
+    if movement.item_id != item_id:
+        raise NotFoundError("Movement not found")
+    await delete_movement(db, movement_id)
     await db.commit()
 
-    return RedirectResponse(
-        url=f"/items/{item_id}",
-        status_code=303,
+    movements, _ = await get_item_movements(db, item_id)
+
+    jinja_env: Environment = request.app.state.jinja_env
+    template = jinja_env.get_template("movements/_timeline.html")
+    html = template.render(
+        movements=movements,
+        item_id=item_id,
+        show_delete=True,
+        current_user=user,
     )
+    return HTMLResponse(content=html)
 
 
 @router.get("/items/{item_id}/movements", response_class=HTMLResponse)

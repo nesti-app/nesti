@@ -122,6 +122,20 @@ async def manufacturers_search(
     return [row[0] for row in result.all()]
 
 
+@router.get("/search/json")
+async def items_search(q: str = "", db: AsyncSession = Depends(get_db)) -> list[dict[str, str]]:
+    from sqlalchemy import select
+
+    from app.items.models import Item
+
+    query = select(Item).order_by(Item.name)
+    if q:
+        query = query.where(Item.name.ilike(f"%{q}%"))
+    query = query.limit(20)
+    result = await db.execute(query)
+    return [{"id": str(i.id), "name": i.name} for i in result.scalars().all()]
+
+
 @router.get("/new", response_class=HTMLResponse)
 async def item_create_form(
     request: Request,
@@ -288,20 +302,28 @@ async def item_edit_form(
 
     from app.categories.service import list_categories
     from app.locations.service import list_locations
+    from app.movements.service import get_item_movements
+    from app.relationships.service import get_item_relationships
     from app.tags.service import list_tags
 
     categories, _ = await list_categories(db)
     locations, _ = await list_locations(db)
     tags, _ = await list_tags(db)
+    movements, _ = await get_item_movements(db, item_id)
+    relationships = await get_item_relationships(db, item_id)
 
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("items/form.html")
     html = template.render(
         item=item,
+        item_id=item.id,
         item_tags_json=[{"name": t.name} for t in item.tags],
         categories=categories,
         locations=locations,
         tags=tags,
+        movements=movements,
+        relationships=relationships,
+        show_delete=True,
         current_user=user,
     )
     return HTMLResponse(content=html)
@@ -325,11 +347,14 @@ async def item_edit_submit(
     currency: str = Form(""),
     notes: str = Form(""),
     tag_names: str = Form(""),
+    movement_reason: str = Form(""),
+    movement_notes: str = Form(""),
+    movement_to_location_id: uuid.UUID | None = Form(None),
     photo: UploadFile | None = File(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
-    await get_item_by_id(db, item_id)
+    item = await get_item_by_id(db, item_id)
     await _check_item_permission(db, user, item_id, "edit")
 
     parsed_date = None
@@ -357,11 +382,16 @@ async def item_edit_submit(
     else:
         tag_ids = []
 
+    final_location: uuid.UUID | None
+    if movement_to_location_id is not None and movement_to_location_id != item.location_id:
+        final_location = movement_to_location_id
+    else:
+        final_location = location_id
     data = ItemUpdate(
         name=name,
         description=description or None,
         category_id=category_id,
-        location_id=location_id,
+        location_id=final_location,
         parent_item_id=parent_item_id,
         manufacturer=manufacturer or None,
         model=model_name or None,
@@ -373,6 +403,17 @@ async def item_edit_submit(
         notes=notes or None,
         tag_ids=tag_ids,
     )
+    if final_location != item.location_id:
+        from app.movements.service import move_item
+
+        await move_item(
+            db,
+            item_id,
+            final_location,
+            reason=(movement_reason.strip() or None),
+            notes=(movement_notes.strip() or None),
+            user_id=user.id,
+        )
     await update_item(db, item_id, data, user_id=user.id)
     await db.commit()
 

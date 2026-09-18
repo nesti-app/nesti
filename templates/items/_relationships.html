@@ -18,9 +18,13 @@
                     {{ rel.target_item.name if rel.target_item else rel.target_item_id }}
                 </a>
             </div>
-            <form method="post" action="/items/{{ item_id }}/relationships/{{ rel.id }}/delete" class="inline">
-                <button type="submit" class="text-xs text-red-500 hover:text-red-700">Видалити</button>
-            </form>
+            {% if show_delete and rel.id %}
+            <button type="button" hx-post="/items/{{ item_id }}/relationships/{{ rel.id }}/delete"
+                    hx-confirm="Видалити зв'язок?"
+                    hx-target="#relationship-list"
+                    hx-swap="innerHTML"
+                    class="text-xs text-red-500 hover:text-red-700">Видалити</button>
+            {% endif %}
         </div>
         {% endfor %}
 
@@ -39,35 +43,4 @@
     {% else %}
     <p class="text-sm text-gray-500">Зв'язків немає.</p>
     {% endif %}
-
-    <form method="post" action="/items/{{ item_id }}/relationships" class="flex flex-wrap items-end gap-2 border-t pt-3">
-        <div>
-            <label for="target_item_id" class="block text-xs font-medium text-gray-700">Предмет</label>
-            <select name="target_item_id" id="target_item_id" required
-                    class="mt-1 block rounded-md border border-gray-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                <option value="">Оберіть...</option>
-                {% for item in all_items %}
-                    {% if item.id != item_id %}
-                    <option value="{{ item.id }}">{{ item.name }}</option>
-                    {% endif %}
-                {% endfor %}
-            </select>
-        </div>
-        <div>
-            <label for="relationship_type" class="block text-xs font-medium text-gray-700">Тип</label>
-            <select name="relationship_type" id="relationship_type" required
-                    class="mt-1 block rounded-md border border-gray-300 px-2 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                <option value="related_to">Пов'язаний</option>
-                <option value="contains">Містить</option>
-                <option value="part_of">Частина</option>
-                <option value="accessory_of">Аксесуар</option>
-                <option value="connected_to">Підключений до</option>
-                <option value="used_with">Використовується з</option>
-                <option value="replacement_for">Заміна для</option>
-            </select>
-        </div>
-        <button type="submit" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">
-            Додати
-        </button>
-    </form>
 </div>
