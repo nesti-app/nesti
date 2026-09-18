@@ -94,7 +94,9 @@
 
             {% include "items/_images.html" %}
 
+            {% if current_user %}
             {% include "items/_qr.html" %}
+            {% endif %}
 
             {% if item.description %}
             <p class="mt-3 text-sm text-gray-700">{{ item.description }}</p>
@@ -161,6 +163,7 @@
 
             <div id="move-modal" class="mt-4"></div>
 
+            {% if current_user %}
             <div class="mt-6 border-t pt-4">
                 <div class="flex items-center justify-between">
                     <h2 class="text-sm font-medium text-gray-500">Історія переміщень</h2>
@@ -177,13 +180,7 @@
                     <p class="text-sm text-gray-400">Завантаження...</p>
                 </div>
             </div>
-
-            <div class="mt-6 border-t pt-4 text-xs text-gray-400">
-                Створено: {{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else '—' }}
-                {% if item.updated_at %}
-                · Оновлено: {{ item.updated_at.strftime('%d.%m.%Y %H:%M') }}
-                {% endif %}
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>

@@ -53,7 +53,11 @@ async def get_scope_by_id(db: AsyncSession, scope_id: uuid.UUID) -> AccessScope:
 
 
 async def create_scope(db: AsyncSession, data: AccessScopeCreate) -> AccessScope:
-    scope = AccessScope(name=data.name, description=data.description)
+    scope = AccessScope(
+        name=data.name,
+        description=data.description,
+        allow_anonymous=data.allow_anonymous,
+    )
     db.add(scope)
     await db.flush()
     await db.refresh(scope)
@@ -362,24 +366,55 @@ async def evaluate_user_scopes(
     return list(result.scalars().all())
 
 
+async def evaluate_anonymous_scopes(db: AsyncSession) -> list[AccessScope]:
+    """Get all scopes that are explicitly open to unauthenticated users."""
+    result = await db.execute(
+        select(AccessScope).where(AccessScope.allow_anonymous.is_(True))
+    )
+    return list(result.scalars().all())
+
+
+async def _scopes_for_user(
+    db: AsyncSession,
+    user_id: uuid.UUID | None,
+) -> list[AccessScope]:
+    """Resolve the scopes that apply to a user, or the public scopes for anonymous."""
+    if user_id is None:
+        return await evaluate_anonymous_scopes(db)
+    return await evaluate_user_scopes(db, user_id)
+
+
+def _allowed_permission(user_id: uuid.UUID | None, permission: str) -> bool:
+    """Anonymous visitors can only ever be granted the ``view`` permission."""
+    return permission == "view" if user_id is None else True
+
+
 async def user_has_item_permission(
     db: AsyncSession,
-    user_id: uuid.UUID,
+    user_id: uuid.UUID | None,
     item_id: uuid.UUID,
     permission: str,
 ) -> bool:
     """Check if a user has a specific permission on a specific item.
 
     The item must match ALL rules of at least one scope that:
-    1. Is assigned to the user
+    1. Is assigned to the user (or public, when ``user_id`` is ``None``)
     2. Grants the requested permission
+
+    Anonymous visitors are only ever granted the ``view`` permission.
     """
-    scopes = await evaluate_user_scopes(db, user_id)
+    if not _allowed_permission(user_id, permission):
+        return False
+
+    scopes = await _scopes_for_user(db, user_id)
     if not scopes:
         return False
 
     for scope in scopes:
         scope_perms = {p.permission for p in scope.permissions}
+        # Public scopes implicitly grant "view" to anonymous visitors.
+        if user_id is None:
+            scope_perms.add("view")
         if permission not in scope_perms:
             continue
 
@@ -400,11 +435,11 @@ async def user_has_item_permission(
 
 async def get_user_item_permissions(
     db: AsyncSession,
-    user_id: uuid.UUID,
+    user_id: uuid.UUID | None,
     item_id: uuid.UUID,
 ) -> set[str]:
     """Get all permissions a user has on a specific item."""
-    scopes = await evaluate_user_scopes(db, user_id)
+    scopes = await _scopes_for_user(db, user_id)
     merged: set[str] = set()
 
     for scope in scopes:
@@ -418,6 +453,13 @@ async def get_user_item_permissions(
         result = await db.execute(query)
         count = result.scalar_one()
         if count > 0:
-            merged.update(p.permission for p in scope.permissions)
+            merged.update(
+                p.permission
+                for p in scope.permissions
+                if _allowed_permission(user_id, p.permission)
+            )
+            # Public scopes implicitly grant "view" to anonymous visitors.
+            if user_id is None:
+                merged.add("view")
 
     return merged

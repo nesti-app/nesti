@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.access.service import evaluate_user_scopes, get_user_item_permissions
 from app.common.exceptions import ForbiddenError
 from app.db.engine import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_optional_user
 from app.items.schemas import ItemCreate, ItemUpdate
 from app.items.service import (
     create_item,
@@ -28,46 +28,59 @@ router = APIRouter(prefix="/items", tags=["items"])
 
 async def _check_item_permission(
     db: AsyncSession,
-    user: User,
+    user: User | None,
     item_id: uuid.UUID,
     permission: str,
 ) -> None:
-    if user.role == "admin":
+    if user is not None and user.role == "admin":
         return
     from app.access.service import user_has_item_permission
 
-    has = await user_has_item_permission(db, user.id, item_id, permission)
+    user_id = user.id if user is not None else None
+    has = await user_has_item_permission(db, user_id, item_id, permission)
     if not has:
         raise ForbiddenError("You do not have permission to perform this action")
 
 
 async def _get_user_item_filters(
     db: AsyncSession,
-    user: User,
+    user: User | None,
 ) -> list | None:
-    """Get item filters based on user's access scopes. None means no filter (admin)."""
-    if user.role == "admin":
+    """Get item filters based on the viewer's access scopes.
+
+    Returns ``None`` when no filtering is required (admins), or a list of
+    conditions otherwise. Anonymous visitors are limited to public scopes.
+    """
+    if user is not None and user.role == "admin":
         return None
 
-    scopes = await evaluate_user_scopes(db, user.id)
-    if not scopes:
-        from app.access.service import _build_item_filters
+    from sqlalchemy import false
 
-        return []
+    from app.access.service import (
+        _build_item_filters,
+        evaluate_anonymous_scopes,
+    )
 
-    from app.access.service import _build_item_filters
+    if user is None:
+        scopes = await evaluate_anonymous_scopes(db)
+    else:
+        scopes = await evaluate_user_scopes(db, user.id)
 
     all_conditions = []
     for scope in scopes:
         scope_perms = {p.permission for p in scope.permissions}
+        # Public scopes implicitly grant "view" to anonymous visitors.
+        if user is None:
+            scope_perms.add("view")
         if "view" not in scope_perms:
             continue
         conditions = await _build_item_filters(db, scope.rules)
         if conditions:
             all_conditions.extend(conditions)
 
+    # No matching scope means "nothing is visible", not "everything is visible".
     if not all_conditions:
-        return []
+        return [false()]
 
     return all_conditions
 
@@ -76,7 +89,7 @@ async def _get_user_item_filters(
 async def items_list(
     request: Request,
     page: int = 1,
-    user: User = Depends(get_current_user),
+    user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
     filters = await _get_user_item_filters(db, user)
@@ -234,15 +247,18 @@ async def item_create_submit(
 async def item_detail(
     request: Request,
     item_id: uuid.UUID,
-    user: User = Depends(get_current_user),
+    user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
     item = await get_item_by_id(db, item_id)
     await _check_item_permission(db, user, item_id, "view")
 
-    permissions = await get_user_item_permissions(db, user.id, item_id)
-    if user.role in ("admin", "editor"):
-        permissions.update({"view", "create", "edit", "move", "delete", "manage_images"})
+    if user is None:
+        permissions = {"view"}
+    else:
+        permissions = await get_user_item_permissions(db, user.id, item_id)
+        if user.role in ("admin", "editor"):
+            permissions.update({"view", "create", "edit", "move", "delete", "manage_images"})
 
     jinja_env: Environment = request.app.state.jinja_env
     template = jinja_env.get_template("items/detail.html")

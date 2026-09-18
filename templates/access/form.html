@@ -13,6 +13,13 @@
                 <label for="description" class="block text-sm font-medium text-gray-700">Опис</label>
                 <textarea name="description" id="description" rows="3" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">{{ scope.description if scope and scope.description else '' }}</textarea>
             </div>
+            <div class="flex items-start gap-3 rounded-md border border-gray-200 bg-gray-50 p-3">
+                <input type="checkbox" name="allow_anonymous" id="allow_anonymous" value="1" {% if scope and scope.allow_anonymous %}checked{% endif %} class="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                <label for="allow_anonymous" class="text-sm text-gray-700">
+                    Дозволити доступ анонімним користувачам
+                    <span class="mt-0.5 block text-xs text-gray-500">Неавторизовані відвідувачі отримають лише дозвіл «Перегляд» на предмети, що відповідають правилам цієї області.</span>
+                </label>
+            </div>
             <div class="flex gap-3">
                 <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">{{ 'Зберегти' if scope else 'Створити' }}</button>
                 <a href="/access{% if scope %}/{{ scope.id }}{% endif %}" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Скасувати</a>
