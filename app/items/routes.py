@@ -10,7 +10,7 @@ from jinja2 import Environment
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.access.service import evaluate_user_scopes, get_user_item_permissions
-from app.common.exceptions import ForbiddenError
+from app.common.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.db.engine import get_db
 from app.dependencies import get_current_user, get_optional_user
 from app.items.schemas import ItemCreate, ItemUpdate
@@ -40,6 +40,42 @@ async def _check_item_permission(
     has = await user_has_item_permission(db, user_id, item_id, permission)
     if not has:
         raise ForbiddenError("You do not have permission to perform this action")
+
+
+async def _apply_new_relationships(
+    db: AsyncSession,
+    item_id: uuid.UUID,
+    relationships_json: str,
+    user_id: uuid.UUID,
+    existing: set[tuple[str, str, str]] | None = None,
+) -> None:
+    if not relationships_json.strip():
+        return
+
+    import json
+
+    from app.relationships.service import create_relationship
+
+    try:
+        rels = json.loads(relationships_json)
+    except (json.JSONDecodeError, TypeError):
+        rels = []
+
+    existing_keys = existing or set()
+    for rel in rels:
+        try:
+            target = uuid.UUID(str(rel.get("id")))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        rtype = str(rel.get("type") or "related_to")
+        key = (str(item_id), str(target), rtype)
+        if key in existing_keys:
+            continue
+        try:
+            await create_relationship(db, item_id, target, rtype, user_id)
+        except (NotFoundError, ConflictError):
+            continue
+    await db.commit()
 
 
 async def _get_user_item_filters(
@@ -183,6 +219,7 @@ async def item_create_submit(
     currency: str = Form(""),
     notes: str = Form(""),
     tag_names: str = Form(""),
+    relationships_json: str = Form(""),
     photo: UploadFile | None = File(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -230,6 +267,8 @@ async def item_create_submit(
     )
     item = await create_item(db, data, user_id=user.id)
     await db.commit()
+
+    await _apply_new_relationships(db, item.id, relationships_json, user.id)
 
     photo_error = False
     if photo and photo.filename:
@@ -350,6 +389,7 @@ async def item_edit_submit(
     movement_reason: str = Form(""),
     movement_notes: str = Form(""),
     movement_to_location_id: uuid.UUID | None = Form(None),
+    relationships_json: str = Form(""),
     photo: UploadFile | None = File(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -416,6 +456,17 @@ async def item_edit_submit(
         )
     await update_item(db, item_id, data, user_id=user.id)
     await db.commit()
+
+    from app.relationships.service import get_item_relationships
+
+    existing = await get_item_relationships(db, item_id)
+    existing_keys = {
+        (str(r.source_item_id), str(r.target_item_id), r.relationship_type)
+        for r in existing
+    }
+    await _apply_new_relationships(
+        db, item_id, relationships_json, user.id, existing=existing_keys
+    )
 
     photo_error = False
     if photo and photo.filename:

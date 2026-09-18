@@ -75,7 +75,7 @@
                 </div>
                 <div>
                     <label for="location_id" class="block text-sm font-medium text-gray-700">Локація</label>
-                    <select name="location_id" id="location_id" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <select name="location_id" id="location_id" onchange="var p = document.getElementById('movement_placement'); if (p) p.value = this.value;" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
                         <option value="">— Немає —</option>
                         {% for loc in locations %}
                         <option value="{{ loc.id }}" {% if item and item.location_id == loc.id %}selected{% endif %}>{{ loc.name }}</option>
@@ -149,10 +149,10 @@
                 <label for="notes" class="block text-sm font-medium text-gray-700">Нотатки</label>
                 <textarea name="notes" id="notes" rows="2" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">{{ item.notes if item and item.notes else '' }}</textarea>
             </div>
-            {% if item %}
-            <details class="space-y-3 rounded-md border border-gray-200 bg-gray-50 p-4" {% if movements %}open{% endif %}>
+            <details class="space-y-3 rounded-md border border-gray-200 bg-gray-50 p-4" {% if item and movements %}open{% endif %}>
                 <summary class="cursor-pointer text-sm font-semibold text-gray-900">Переміщення предмета</summary>
                 <div class="mt-3 space-y-3">
+                    {% if item %}
                     <div>
                         {% if item.location %}
                         <p class="mt-1 text-sm text-gray-600">Поточна локація: <span class="font-medium">{{ item.location.name }}</span></p>
@@ -188,55 +188,77 @@
                         </div>
                     </div>
                     {% endif %}
+                    {% else %}
+                    <div>
+                        <label for="movement_placement" class="block text-sm font-medium text-gray-700">Місце розміщення</label>
+                        <select id="movement_placement" onchange="document.getElementById('location_id').value = this.value"
+                                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="">— Без локації —</option>
+                            {% for loc in locations %}
+                            <option value="{{ loc.id }}">{{ loc.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="mt-2 text-sm text-gray-500">Історія переміщень з'явиться після створення предмета.</p>
+                    </div>
+                    {% endif %}
                 </div>
             </details>
-            {% endif %}
-            {% if item %}
-            <details class="space-y-4 rounded-md border border-gray-200 bg-gray-50 p-4" {% if relationships %}open{% endif %}>
+            <details class="space-y-4 rounded-md border border-gray-200 bg-gray-50 p-4" {% if item and relationships %}open{% endif %}>
                 <summary class="cursor-pointer text-sm font-semibold text-gray-900">Зв'язки</summary>
                 <div class="mt-3 space-y-4">
+                    {% if item %}
                     <div id="relationship-list">
                         {% include "items/_relationships.html" %}
                     </div>
+                    {% endif %}
                     <div x-data="relationshipAutocomplete()" class="relative">
                         <label for="relationship-query" class="block text-sm font-medium text-gray-700">Новий зв'язок</label>
-                        <input type="hidden" name="target_item_id" id="relationship-target-id" :value="selected ? selected.id : ''">
-                        <input type="text" id="relationship-query" x-model="query" @input="search()" @keydown.enter.prevent="pickFirst()"
-                               @keydown.escape="suggestions = []" @click.outside="suggestions = []" autocomplete="off"
-                               placeholder="Пошук предмету..."
-                               class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                        <div x-show="suggestions.length > 0" x-transition class="absolute z-10 mt-1 w-full max-h-40 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                            <template x-for="(s, i) in suggestions" :key="i">
-                                <button type="button" @click="select(s)" class="block w-full px-3 py-2 text-left text-sm hover:bg-indigo-50" x-text="s.name"></button>
+                        <input type="hidden" name="relationships_json" id="relationships-json" :value="JSON.stringify(pending)">
+                        <div class="flex flex-wrap items-end gap-2">
+                            <div class="relative flex-1 basis-40">
+                                <input type="text" id="relationship-query" x-model="query" @input="search()" @keydown.enter.prevent="pickFirst()"
+                                       @keydown.escape="suggestions = []" @click.outside="suggestions = []" autocomplete="off"
+                                       placeholder="Пошук предмету..."
+                                       class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                <div x-show="suggestions.length > 0" x-transition class="absolute z-10 mt-1 w-full max-h-40 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                    <template x-for="(s, i) in suggestions" :key="i">
+                                        <button type="button" @click="select(s)" class="block w-full px-3 py-2 text-left text-sm hover:bg-indigo-50" x-text="s.name"></button>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="flex-1 basis-40">
+                                <label for="relationship-type" class="block text-sm font-medium text-gray-700">Тип</label>
+                                <select id="relationship-type" x-model="pendingType"
+                                        class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                    <option value="related_to">Пов'язаний</option>
+                                    <option value="contains">Містить</option>
+                                    <option value="part_of">Частина</option>
+                                    <option value="accessory_of">Аксесуар</option>
+                                    <option value="connected_to">Підключений до</option>
+                                    <option value="used_with">Використовується з</option>
+                                    <option value="replacement_for">Заміна для</option>
+                                </select>
+                            </div>
+                            <button type="button" @click="addPending()"
+                                    class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                                Додати
+                            </button>
+                        </div>
+                        <div class="mt-3" x-show="pending.length > 0">
+                            <h3 class="mb-2 text-xs font-medium text-gray-500">Нові зв'язки (збережуться разом із предметом)</h3>
+                            <template x-for="(rel, i) in pending" :key="i">
+                                <div class="mb-2 flex items-center justify-between rounded-md border border-gray-200 px-3 py-2">
+                                    <div>
+                                        <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700" x-text="rel.type ? typeLabel[rel.type] || rel.type : ''"></span>
+                                        <span class="ml-2 text-sm font-medium text-gray-700" x-text="rel.name"></span>
+                                    </div>
+                                    <button type="button" @click="removePending(i)" class="text-xs text-red-500 hover:text-red-700">Видалити</button>
+                                </div>
                             </template>
                         </div>
                     </div>
-                    <div class="flex flex-wrap items-end gap-2">
-                        <div class="flex-1 basis-40">
-                            <label for="relationship-type" class="block text-sm font-medium text-gray-700">Тип</label>
-                            <select name="relationship_type" id="relationship-type"
-                                    class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                                <option value="related_to">Пов'язаний</option>
-                                <option value="contains">Містить</option>
-                                <option value="part_of">Частина</option>
-                                <option value="accessory_of">Аксесуар</option>
-                                <option value="connected_to">Підключений до</option>
-                                <option value="used_with">Використовується з</option>
-                                <option value="replacement_for">Заміна для</option>
-                            </select>
-                        </div>
-                        <button type="button" hx-post="/items/{{ item.id }}/relationships"
-                                hx-include="#relationship-target-id, #relationship-type"
-                                hx-target="#relationship-list"
-                                hx-swap="innerHTML"
-                                onclick="if (!document.getElementById('relationship-target-id').value) { alert('Оберіть предмет із підказок'); return false; }"
-                                class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                            Додати
-                        </button>
-                    </div>
                 </div>
             </details>
-            {% endif %}
             <div class="flex gap-3">
                 <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">{{ 'Зберегти' if item else 'Створити' }}</button>
                 <a href="/items{% if item %}/{{ item.id }}{% endif %}" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Скасувати</a>
@@ -373,7 +395,18 @@ function relationshipAutocomplete() {
         query: '',
         suggestions: [],
         selected: null,
-        currentId: {{ (item.id | string) | tojson }},
+        pendingType: 'related_to',
+        pending: [],
+        currentId: {{ (item.id | string) | tojson if item else 'null' }},
+        typeLabel: {
+            'related_to': 'Пов\'язаний',
+            'contains': 'Містить',
+            'part_of': 'Частина',
+            'accessory_of': 'Аксесуар',
+            'connected_to': 'Підключений до',
+            'used_with': 'Використовується з',
+            'replacement_for': 'Заміна для'
+        },
         search() {
             var self = this;
             var q = self.query.trim();
@@ -390,6 +423,17 @@ function relationshipAutocomplete() {
         },
         pickFirst() {
             if (this.suggestions.length > 0) this.select(this.suggestions[0]);
+        },
+        addPending() {
+            if (!this.selected) { alert('Оберіть предмет із підказок'); return; }
+            if (this.pending.some(r => r.id === this.selected.id)) { alert('Цей зв\'язок уже додано'); return; }
+            this.pending.push({id: this.selected.id, name: this.selected.name, type: this.pendingType});
+            this.selected = null;
+            this.query = '';
+            this.suggestions = [];
+        },
+        removePending(i) {
+            this.pending.splice(i, 1);
         }
     };
 }
