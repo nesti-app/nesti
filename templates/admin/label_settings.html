@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Налаштування етикетки — Nesti{% endblock %}
+{% block content %}
+<div class="py-8">
+    <div class="mx-auto max-w-2xl">
+        <a href="/admin" class="text-sm text-indigo-600 hover:text-indigo-500">&larr; Назад</a>
+        <h1 class="mt-4 text-2xl font-bold text-gray-900">Налаштування етикетки</h1>
+        <p class="mt-1 text-sm text-gray-600">
+            Ці значення використовуються за замовчуванням у діалозі друку етикетки.
+        </p>
+
+        {% if saved %}
+        <div class="mt-4 rounded-md bg-green-50 p-3 text-sm text-green-700">Налаштування збережено.</div>
+        {% endif %}
+        {% if error %}
+        <div class="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">Помилка: {{ error }}</div>
+        {% endif %}
+
+        <div class="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-gray-900">Попередній перегляд</h2>
+            <div class="mt-3 flex justify-center rounded-md bg-gray-50 p-4">
+                <img id="admin-preview-img" class="max-h-56" alt="Превʼю етикетки">
+            </div>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label for="dummy_name" class="block text-sm font-medium text-gray-700">Приклад назви</label>
+                    <input type="text" id="dummy_name" value="{{ dummy_name }}" oninput="updateAdminPreview()"
+                           class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label for="dummy_code" class="block text-sm font-medium text-gray-700">Приклад коду</label>
+                    <input type="text" id="dummy_code" value="{{ dummy_code }}" oninput="updateAdminPreview()"
+                           class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <form method="post" action="/admin/label-settings" class="mt-6 space-y-6 rounded-lg border bg-white p-6 shadow-sm">
+            <fieldset>
+                <legend class="block text-sm font-medium text-gray-700">Тип етикетки</legend>
+                <div class="mt-2 space-y-1">
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="radio" name="label_type" value="compact" {% if settings.label_type == 'compact' %}checked{% endif %} class="text-indigo-600" onchange="updateAdminPreview()">
+                        Компактна (тільки QR-код)
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="radio" name="label_type" value="full" {% if settings.label_type == 'full' %}checked{% endif %} class="text-indigo-600" onchange="updateAdminPreview()">
+                        Повна (QR + назва + код)
+                    </label>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend class="block text-sm font-medium text-gray-700">Орієнтація</legend>
+                <div class="mt-2 space-y-1">
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="radio" name="orientation" value="horizontal" {% if settings.orientation == 'horizontal' %}checked{% endif %} class="text-indigo-600" onchange="updateAdminPreview()">
+                        Горизонтальна (QR зліва, текст справа)
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="radio" name="orientation" value="vertical" {% if settings.orientation == 'vertical' %}checked{% endif %} class="text-indigo-600" onchange="updateAdminPreview()">
+                        Вертикальна (QR зверху, текст знизу)
+                    </label>
+                </div>
+            </fieldset>
+
+            <div>
+                <label for="size" class="block text-sm font-medium text-gray-700">Розмір</label>
+                <select id="size" name="size" onchange="updateAdminPreview()"
+                        class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                    {% for s in sizes %}
+                    <option value="{{ s.value }}" {% if settings.size == s.value %}selected{% endif %}>{{ s.label }}</option>
+                    {% endfor %}
+                    <option value="custom" {% if settings.size == 'custom' %}selected{% endif %}>Інший (задати вручну)</option>
+                </select>
+            </div>
+
+            <div class="flex gap-4">
+                <div>
+                    <label for="custom_width" class="block text-sm font-medium text-gray-700">Ширина (мм)</label>
+                    <input type="number" id="custom_width" name="custom_width" min="1" max="200" value="{{ settings.custom_width }}" oninput="updateAdminPreview()"
+                           class="mt-1 block w-28 rounded-md border border-gray-300 px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label for="custom_height" class="block text-sm font-medium text-gray-700">Висота (мм)</label>
+                    <input type="number" id="custom_height" name="custom_height" min="1" max="200" value="{{ settings.custom_height }}" oninput="updateAdminPreview()"
+                           class="mt-1 block w-28 rounded-md border border-gray-300 px-3 py-2 text-sm">
+                </div>
+            </div>
+
+            <fieldset>
+                <legend class="block text-sm font-medium text-gray-700">Шрифт</legend>
+                <div class="mt-2 grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="name_font_size" class="block text-sm text-gray-700">Шрифт назви</label>
+                        <input type="number" id="name_font_size" name="name_font_size" min="6" max="48" value="{{ settings.name_font_size }}" oninput="updateAdminPreview()"
+                               class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label for="code_font_size" class="block text-sm text-gray-700">Шрифт коду</label>
+                        <input type="number" id="code_font_size" name="code_font_size" min="6" max="48" value="{{ settings.code_font_size }}" oninput="updateAdminPreview()"
+                               class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend class="block text-sm font-medium text-gray-700">Перенесення тексту</legend>
+                <div class="mt-2 space-y-3">
+                    <div>
+                        <label for="max_name_lines" class="block text-sm text-gray-700">Кількість рядків назви</label>
+                        <input type="number" id="max_name_lines" name="max_name_lines" min="1" max="10" value="{{ settings.max_name_lines }}" oninput="updateAdminPreview()"
+                               class="mt-1 block w-28 rounded-md border border-gray-300 px-3 py-2 text-sm">
+                    </div>
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" id="wrap_by_words" name="wrap_by_words" value="1" {% if settings.wrap_by_words %}checked{% endif %} class="text-indigo-600" onchange="updateAdminPreview()">
+                        Переносити по словах (інакше — по символах)
+                    </label>
+                </div>
+            </fieldset>
+
+            <div class="flex justify-end">
+                <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                    Зберегти
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function adminPreviewUrl() {
+    var value = function(id) { return document.getElementById(id).value; };
+    var checked = function(name) {
+        var el = document.querySelector('input[name="' + name + '"]:checked');
+        return el ? el.value : '';
+    };
+    var params = new URLSearchParams();
+    params.set('label_type', checked('label_type'));
+    params.set('orientation', checked('orientation'));
+    params.set('size', value('size'));
+    params.set('custom_width', value('custom_width'));
+    params.set('custom_height', value('custom_height'));
+    params.set('name_font_size', value('name_font_size'));
+    params.set('code_font_size', value('code_font_size'));
+    params.set('max_name_lines', value('max_name_lines'));
+    params.set('wrap_by_words', document.getElementById('wrap_by_words').checked ? '1' : '0');
+    params.set('name', value('dummy_name') || 'Приклад назви предмета');
+    params.set('code', value('dummy_code') || 'A7F3Z2');
+    return '/admin/label-settings/preview?' + params.toString();
+}
+
+function updateAdminPreview() {
+    document.getElementById('admin-preview-img').src = adminPreviewUrl();
+}
+
+updateAdminPreview();
+</script>
+{% endblock %}

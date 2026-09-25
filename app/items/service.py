@@ -52,7 +52,9 @@ async def create_item(
     *,
     user_id: uuid.UUID | None = None,
 ) -> Item:
+    item_id = uuid.uuid4()
     item = Item(
+        id=item_id,
         name=data.name,
         description=data.description,
         category_id=data.category_id,
@@ -68,11 +70,10 @@ async def create_item(
         notes=data.notes,
         created_by=user_id,
         updated_by=user_id,
+        short_code=uuid_to_short_code(item_id),
     )
     db.add(item)
     await db.flush()
-
-    item.short_code = uuid_to_short_code(item.id)
 
     for tag_id in data.tag_ids:
         db.add(ItemTag(item_id=item.id, tag_id=tag_id))

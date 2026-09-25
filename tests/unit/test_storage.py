@@ -1,90 +1,110 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import pytest
+from botocore.exceptions import ClientError
 
 from app.config import get_settings
-from app.media.storage import (
-    S3StorageBackend,
-    SupabaseStorageBackend,
-    get_storage_backend,
-)
+from app.media.storage import S3StorageBackend, get_storage_backend
 
 
-def _settings(**overrides) -> dict:
-    base = {
-        "app_env": "development",
-        "supabase_url": "https://x.supabase.co",
-        "supabase_service_role_key": "svc",
-        "supabase_storage_bucket": "inventory-images",
-        "s3_endpoint_url": "",
-        "s3_access_key_id": "",
-        "s3_secret_access_key": "",
-        "s3_bucket_name": "",
-        "s3_region": "us-east-1",
-    }
-    base.update(overrides)
-    return base
-
-
-def test_s3_enabled_flag_requires_full_config(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("APP_ENV", "development")
-    monkeypatch.setenv("SUPABASE_URL", "https://x.supabase.co")
-    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc")
-    monkeypatch.delenv("S3_ENDPOINT_URL", raising=False)
-    monkeypatch.delenv("S3_ACCESS_KEY_ID", raising=False)
-    monkeypatch.delenv("S3_SECRET_ACCESS_KEY", raising=False)
-    settings = get_settings()
-    assert settings.s3_enabled is False
-
-
-def test_get_storage_backend_returns_supabase_by_default(
-    monkeypatch: pytest.MonkeyPatch,
-):
-    monkeypatch.delenv("S3_ENDPOINT_URL", raising=False)
-    monkeypatch.delenv("S3_ACCESS_KEY_ID", raising=False)
-    monkeypatch.delenv("S3_SECRET_ACCESS_KEY", raising=False)
+@pytest.fixture(autouse=True)
+def _reset_backend_cache() -> Iterator[None]:
     from app.media import storage as storage_mod
 
     original = storage_mod._backend
     storage_mod._backend = None
-    try:
-        backend = get_storage_backend()
-        assert isinstance(backend, SupabaseStorageBackend)
-    finally:
-        storage_mod._backend = original
+    yield
+    storage_mod._backend = original
+
+
+def test_s3_enabled_requires_credentials(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("APP_ENV", "development")
+    settings = get_settings()
+    monkeypatch.setattr(settings, "aws_access_key_id", "")
+    monkeypatch.setattr(settings, "aws_secret_access_key", "")
+    assert settings.s3_enabled is False
+
+
+def test_get_storage_backend_raises_without_config(monkeypatch: pytest.MonkeyPatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "aws_access_key_id", "")
+    monkeypatch.setattr(settings, "aws_secret_access_key", "")
+    with pytest.raises(RuntimeError, match="AWS_ACCESS_KEY_ID"):
+        get_storage_backend()
 
 
 def test_get_storage_backend_returns_s3_when_configured(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    from app.media import storage as storage_mod
-
     settings = get_settings()
-    monkeypatch.setattr(settings, "s3_endpoint_url", "https://x.supabase.co/storage/v1/s3")
-    monkeypatch.setattr(settings, "s3_access_key_id", "ak")
-    monkeypatch.setattr(settings, "s3_secret_access_key", "sk")
-    monkeypatch.setattr(settings, "s3_bucket_name", "bucket")
+    monkeypatch.setattr(settings, "aws_access_key_id", "ak")
+    monkeypatch.setattr(settings, "aws_secret_access_key", "sk")
 
-    original = storage_mod._backend
-    storage_mod._backend = None
-    try:
-        backend = get_storage_backend()
-        assert isinstance(backend, S3StorageBackend)
-    finally:
-        storage_mod._backend = original
+    backend = get_storage_backend()
+    assert isinstance(backend, S3StorageBackend)
 
 
-def test_storage_bucket_falls_back_to_supabase_bucket(
-    monkeypatch: pytest.MonkeyPatch,
-):
-    settings = get_settings()
-    monkeypatch.setattr(settings, "s3_bucket_name", "")
-    monkeypatch.setattr(settings, "supabase_storage_bucket", "fallback-bucket")
-    assert settings.storage_bucket == "fallback-bucket"
-
-
-def test_storage_bucket_uses_s3_when_set(monkeypatch: pytest.MonkeyPatch):
+def test_storage_bucket_uses_s3_bucket(monkeypatch: pytest.MonkeyPatch):
     settings = get_settings()
     monkeypatch.setattr(settings, "s3_bucket_name", "s3-bucket")
-    monkeypatch.setattr(settings, "supabase_storage_bucket", "fallback-bucket")
     assert settings.storage_bucket == "s3-bucket"
+
+
+class _FakeClient:
+    def __init__(self, *, missing: bool = False) -> None:
+        self._missing = missing
+        self.created = False
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        pass
+
+    async def head_bucket(self, **_: object) -> None:
+        if self._missing:
+            raise ClientError(
+                {"Error": {"Code": "404", "Message": "Not Found"}},
+                "HeadBucket",
+            )
+        return None
+
+    async def create_bucket(self, **_: object) -> None:
+        self.created = True
+
+
+class _FakeBackend:
+    """Minimal stand-in whose ``_client()`` yields a fake S3 client."""
+
+    def __init__(self, *, missing: bool = False) -> None:
+        self.client = _FakeClient(missing=missing)
+        self.bucket = "test-bucket"
+
+    async def _client(self):
+        return self.client
+
+
+async def test_ensure_bucket_creates_when_missing(monkeypatch: pytest.MonkeyPatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "s3_bucket_name", "test-bucket")
+    backend = S3StorageBackend(settings)
+    fake = _FakeBackend(missing=True)
+    monkeypatch.setattr(backend, "_client", fake._client)
+
+    await backend.ensure_bucket()
+
+    assert fake.client.created is True
+
+
+async def test_ensure_bucket_noop_when_exists(monkeypatch: pytest.MonkeyPatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "s3_bucket_name", "test-bucket")
+    backend = S3StorageBackend(settings)
+    fake = _FakeBackend(missing=False)
+    monkeypatch.setattr(backend, "_client", fake._client)
+
+    await backend.ensure_bucket()
+
+    assert fake.client.created is False

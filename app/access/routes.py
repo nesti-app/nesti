@@ -31,6 +31,7 @@ from app.access.service import (
     resolve_rule_display,
     update_scope,
 )
+from app.common.forms import parse_bool
 from app.db.engine import get_db
 from app.dependencies import get_current_user, require_admin
 from app.users.models import User
@@ -159,10 +160,15 @@ async def access_create_submit(
     request: Request,
     name: str = Form(...),
     description: str = Form(""),
+    allow_anonymous: str | None = Form(None),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
-    data = AccessScopeCreate(name=name, description=description or None)
+    data = AccessScopeCreate(
+        name=name,
+        description=description or None,
+        allow_anonymous=parse_bool(allow_anonymous),
+    )
     scope = await create_scope(db, data)
     return RedirectResponse(url=f"/access/{scope.id}", status_code=303)
 
@@ -221,10 +227,15 @@ async def access_edit_submit(
     request: Request,
     name: str = Form(...),
     description: str = Form(""),
+    allow_anonymous: str | None = Form(None),
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
-    data = AccessScopeUpdate(name=name, description=description or None)
+    data = AccessScopeUpdate(
+        name=name,
+        description=description or None,
+        allow_anonymous=parse_bool(allow_anonymous),
+    )
     await update_scope(db, scope_id, data)
     return RedirectResponse(url=f"/access/{scope_id}", status_code=303)
 

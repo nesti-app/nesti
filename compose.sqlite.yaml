@@ -6,32 +6,18 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://nesti:nesti@db:5432/nesti
+      DATABASE_URL: sqlite+aiosqlite:///./data/nesti.db
       AWS_ENDPOINT_URL: http://rustfs:9000
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-rustfsadmin}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-rustfssecret}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
       S3_BUCKET_NAME: inventory-images
       S3_FORCE_PATH_STYLE: "true"
+    volumes:
+      - nestidata:/app/data
     depends_on:
-      db:
-        condition: service_healthy
       rustfs:
         condition: service_started
-
-  db:
-    image: postgres:18-alpine
-    environment:
-      POSTGRES_USER: nesti
-      POSTGRES_PASSWORD: nesti
-      POSTGRES_DB: nesti
-    volumes:
-      - pgdata:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nesti"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
 
   rustfs:
     image: rustfs/rustfs:latest
@@ -40,10 +26,9 @@ services:
       RUSTFS_ADDRESS: ":9000"
       RUSTFS_ACCESS_KEY: ${AWS_ACCESS_KEY_ID:-rustfsadmin}
       RUSTFS_SECRET_KEY: ${AWS_SECRET_ACCESS_KEY:-rustfssecret}
-      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ENABLE: "false"
     ports:
       - "9000:9000"
-      - "9001:9001"
     volumes:
       - rustfsdata:/data
     healthcheck:
@@ -53,5 +38,5 @@ services:
       retries: 5
 
 volumes:
-  pgdata:
+  nestidata:
   rustfsdata:

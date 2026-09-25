@@ -19,7 +19,6 @@ class UserUpdate(BaseModel):
 
 class UserResponse(BaseModel):
     id: uuid.UUID
-    supabase_id: str
     email: str
     display_name: str | None
     role: str

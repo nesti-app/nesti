@@ -16,13 +16,12 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.drop_index(op.f('ix_categories_slug'), table_name='categories')
-    op.drop_column('categories', 'slug')
+    with op.batch_alter_table('categories') as batch_op:
+        batch_op.drop_index(op.f('ix_categories_slug'))
+        batch_op.drop_column('slug')
 
 
 def downgrade() -> None:
-    op.add_column(
-        'categories',
-        sa.Column('slug', sa.VARCHAR(), autoincrement=False, nullable=True),
-    )
-    op.create_index(op.f('ix_categories_slug'), 'categories', ['slug'], unique=True)
+    with op.batch_alter_table('categories') as batch_op:
+        batch_op.add_column(sa.Column('slug', sa.VARCHAR(), nullable=True))
+        batch_op.create_index(op.f('ix_categories_slug'), ['slug'], unique=True)

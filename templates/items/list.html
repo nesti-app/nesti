@@ -4,7 +4,7 @@
 <div class="py-8">
     <div class="mb-6 flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-900">Предмети</h1>
-        {% if current_user.role in ('admin', 'editor') %}
+        {% if current_user and current_user.role in ('admin', 'editor') %}
         <a href="/items/new" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">+ Новий предмет</a>
         {% endif %}
     </div>

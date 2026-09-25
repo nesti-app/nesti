@@ -19,6 +19,7 @@ from app.config import get_settings
 from app.db.base import Base
 from app.db.engine import _async_database_url
 from app.items.models import Item, ItemAttribute, ItemMovement, ItemRelationship  # noqa: F401
+from app.labels.models import LabelSettings  # noqa: F401
 from app.locations.models import Location  # noqa: F401
 from app.media.models import ItemImage  # noqa: F401
 from app.tags.models import ItemTag, Tag  # noqa: F401

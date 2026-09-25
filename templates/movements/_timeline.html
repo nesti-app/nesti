@@ -44,6 +44,15 @@
                             {% endif %}
                         </div>
                     </div>
+                    {% if show_delete and m.id %}
+                    <div class="flex items-center">
+                        <button type="button" hx-post="/items/{{ item_id }}/movements/{{ m.id }}/delete"
+                                hx-confirm="Видалити переміщення?"
+                                hx-target="#movement-history"
+                                hx-swap="innerHTML"
+                                class="text-xs text-red-500 hover:text-red-700">Видалити</button>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </li>

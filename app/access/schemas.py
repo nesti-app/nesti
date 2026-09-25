@@ -9,11 +9,13 @@ from pydantic import BaseModel, Field
 class AccessScopeCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = None
+    allow_anonymous: bool = False
 
 
 class AccessScopeUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
+    allow_anonymous: bool | None = None
 
 
 class AccessScopeRuleCreate(BaseModel):
@@ -58,6 +60,7 @@ class AccessScopeResponse(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None
+    allow_anonymous: bool = False
     created_at: datetime
     updated_at: datetime
     rules: list[AccessScopeRuleResponse] = []
@@ -71,6 +74,7 @@ class AccessScopeDetailResponse(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None
+    allow_anonymous: bool = False
     created_at: datetime
     updated_at: datetime
     rules: list[AccessScopeRuleResponse] = []

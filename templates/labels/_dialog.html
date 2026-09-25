@@ -3,21 +3,33 @@
 
     <div id="label-preview" class="flex justify-center border rounded-md p-4 bg-gray-50">
         <img id="label-preview-img"
-             src="/items/{{ item.id }}/label/preview?size=30x15&label_type=compact&orientation=horizontal"
+             src="/items/{{ item.id }}/label/preview?size={{ defaults.size }}&label_type={{ defaults.label_type }}&orientation={{ defaults.orientation }}&name_font_size={{ defaults.name_font_size }}&code_font_size={{ defaults.code_font_size }}{% if defaults.size == 'custom' %}&custom_width={{ defaults.custom_width }}&custom_height={{ defaults.custom_height }}{% endif %}"
              alt="Превʼю етикетки"
              class="max-h-48">
     </div>
 
-    <form id="label-form" class="space-y-3">
+    <div class="flex items-center justify-between gap-2">
+        <button type="button" id="toggle-settings-btn" onclick="toggleSettings()"
+                class="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            Розгорнути налаштування
+        </button>
+        <a id="label-download-btn"
+           href="/items/{{ item.id }}/label/download?size={{ defaults.size }}&label_type={{ defaults.label_type }}&orientation={{ defaults.orientation }}&name_font_size={{ defaults.name_font_size }}&code_font_size={{ defaults.code_font_size }}{% if defaults.size == 'custom' %}&custom_width={{ defaults.custom_width }}&custom_height={{ defaults.custom_height }}{% endif %}"
+           class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+            Завантажити PNG
+        </a>
+    </div>
+
+    <form id="label-form" class="hidden space-y-3">
         <fieldset>
             <legend class="block text-sm font-medium text-gray-700">Тип етикетки</legend>
             <div class="mt-2 space-y-1">
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="label_type" value="compact" checked class="text-indigo-600" onchange="updatePreview()">
+                    <input type="radio" name="label_type" value="compact" {% if defaults.label_type == 'compact' %}checked{% endif %} class="text-indigo-600" onchange="updatePreview()">
                     Компактна (тільки QR-код)
                 </label>
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="label_type" value="full" class="text-indigo-600" onchange="updatePreview()">
+                    <input type="radio" name="label_type" value="full" {% if defaults.label_type == 'full' %}checked{% endif %} class="text-indigo-600" onchange="updatePreview()">
                     Повна (QR + назва + код)
                 </label>
             </div>
@@ -27,11 +39,11 @@
             <legend class="block text-sm font-medium text-gray-700">Орієнтація</legend>
             <div class="mt-2 space-y-1">
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="orientation" value="horizontal" checked class="text-indigo-600" onchange="onOrientationChange()">
+                    <input type="radio" name="orientation" value="horizontal" {% if defaults.orientation == 'horizontal' %}checked{% endif %} class="text-indigo-600" onchange="onOrientationChange()">
                     Горизонтальна (QR зліва, текст справа)
                 </label>
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="orientation" value="vertical" class="text-indigo-600" onchange="onOrientationChange()">
+                    <input type="radio" name="orientation" value="vertical" {% if defaults.orientation == 'vertical' %}checked{% endif %} class="text-indigo-600" onchange="onOrientationChange()">
                     Вертикальна (QR зверху, текст знизу)
                 </label>
             </div>
@@ -39,63 +51,57 @@
 
         <fieldset>
             <legend class="block text-sm font-medium text-gray-700">Розмір</legend>
-            <div id="size-options" class="mt-2 space-y-1">
-                <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="size" value="30x12" class="text-indigo-600" onchange="updatePreview()">
-                    <span class="size-label">30 × 12 мм</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="size" value="30x15" checked class="text-indigo-600" onchange="updatePreview()">
-                    <span class="size-label">30 × 15 мм</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="size" value="40x15" class="text-indigo-600" onchange="updatePreview()">
-                    <span class="size-label">40 × 15 мм</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="size" value="30x20" class="text-indigo-600" onchange="updatePreview()">
-                    <span class="size-label">30 × 20 мм</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="size" value="50x20" class="text-indigo-600" onchange="updatePreview()">
-                    <span class="size-label">50 × 20 мм</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm">
-                    <input type="radio" name="size" value="custom" class="text-indigo-600" onchange="toggleCustom(); updatePreview()">
-                    Інший
-                </label>
-            </div>
+            <div id="size-options" class="mt-2 space-y-1"></div>
         </fieldset>
 
         <div id="custom-dimensions" class="hidden flex gap-2">
             <div>
                 <label class="block text-xs text-gray-500">Ширина (мм)</label>
-                <input type="number" name="custom_width" value="30" min="1" max="200"
+                <input type="number" name="custom_width" value="{{ defaults.custom_width }}" min="1" max="200"
                        class="mt-1 block w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
                        onchange="updatePreview()">
             </div>
             <div>
                 <label class="block text-xs text-gray-500">Висота (мм)</label>
-                <input type="number" name="custom_height" value="15" min="1" max="200"
+                <input type="number" name="custom_height" value="{{ defaults.custom_height }}" min="1" max="200"
                        class="mt-1 block w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
                        onchange="updatePreview()">
             </div>
         </div>
 
+        <fieldset>
+            <legend class="block text-sm font-medium text-gray-700">Шрифт</legend>
+            <div class="mt-2 space-y-3">
+                <div>
+                    <div class="flex items-center justify-between text-sm">
+                        <label for="name-font-size" class="text-gray-700">Шрифт назви: </label>
+                        <span id="name-font-value" class="font-mono text-xs text-gray-500">{{ defaults.name_font_size }}</span>
+                    </div>
+                    <input id="name-font-size" type="range" min="8" max="24" value="{{ defaults.name_font_size }}"
+                           class="w-full accent-indigo-600"
+                           oninput="onNameFontChange()">
+                </div>
+                <div>
+                    <div class="flex items-center justify-between text-sm">
+                        <label for="code-font-size" class="text-gray-700">Шрифт коду: </label>
+                        <span id="code-font-value" class="font-mono text-xs text-gray-500">{{ defaults.code_font_size }}</span>
+                    </div>
+                    <input id="code-font-size" type="range" min="6" max="18" value="{{ defaults.code_font_size }}"
+                           class="w-full accent-indigo-600"
+                           oninput="onCodeFontChange()">
+                </div>
+            </div>
+        </fieldset>
+
         <div class="rounded-md bg-gray-50 p-3 text-xs text-gray-500">
             Код: <span class="font-mono font-medium text-gray-700">{{ item.short_code }}</span>
-        </div>
-
-        <div class="flex justify-end gap-2">
-            <a id="label-download-btn" href="/items/{{ item.id }}/label/download?size=30x15&label_type=compact&orientation=horizontal"
-               class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                Завантажити PNG
-            </a>
         </div>
     </form>
 </div>
 
 <script>
+var DEFAULT_SIZE = "{{ defaults.size }}";
+
 var SIZES = {
     horizontal: [
         {val: "30x12", label: "30 × 12 мм"},
@@ -187,6 +193,8 @@ function buildBaseUrl() {
     var labelType = getSelectedLabelType();
     var orientation = getSelectedOrientation();
     var url = '/items/{{ item.id }}/label/preview?size=' + size + '&label_type=' + labelType + '&orientation=' + orientation;
+    url += '&name_font_size=' + document.getElementById('name-font-size').value;
+    url += '&code_font_size=' + document.getElementById('code-font-size').value;
     if (size === 'custom') {
         var w = document.querySelector('input[name="custom_width"]').value || 30;
         var h = document.querySelector('input[name="custom_height"]').value || 15;
@@ -200,6 +208,8 @@ function buildDownloadUrl() {
     var labelType = getSelectedLabelType();
     var orientation = getSelectedOrientation();
     var url = '/items/{{ item.id }}/label/download?size=' + size + '&label_type=' + labelType + '&orientation=' + orientation;
+    url += '&name_font_size=' + document.getElementById('name-font-size').value;
+    url += '&code_font_size=' + document.getElementById('code-font-size').value;
     if (size === 'custom') {
         var w = document.querySelector('input[name="custom_width"]').value || 30;
         var h = document.querySelector('input[name="custom_height"]').value || 15;
@@ -208,10 +218,27 @@ function buildDownloadUrl() {
     return url;
 }
 
+function onNameFontChange() {
+    document.getElementById('name-font-value').textContent = document.getElementById('name-font-size').value;
+    updatePreview();
+}
+
+function onCodeFontChange() {
+    document.getElementById('code-font-value').textContent = document.getElementById('code-font-size').value;
+    updatePreview();
+}
+
 function updatePreview() {
     var img = document.getElementById('label-preview-img');
     img.src = buildBaseUrl();
     document.getElementById('label-download-btn').href = buildDownloadUrl();
+}
+
+function toggleSettings() {
+    var form = document.getElementById('label-form');
+    var btn = document.getElementById('toggle-settings-btn');
+    var collapsed = form.classList.toggle('hidden');
+    btn.textContent = collapsed ? 'Розгорнути налаштування' : 'Згорнути налаштування';
 }
 
 function toggleCustom() {
@@ -222,4 +249,19 @@ function toggleCustom() {
         el.classList.add('hidden');
     }
 }
+
+function initLabelForm() {
+    document.getElementById('name-font-size').value = {{ defaults.name_font_size }};
+    document.getElementById('name-font-value').textContent = {{ defaults.name_font_size }};
+    document.getElementById('code-font-size').value = {{ defaults.code_font_size }};
+    document.getElementById('code-font-value').textContent = {{ defaults.code_font_size }};
+
+    rebuildSizeOptions();
+    var radio = document.querySelector('input[name="size"][value="' + DEFAULT_SIZE + '"]');
+    if (radio) radio.checked = true;
+    toggleCustom();
+    updatePreview();
+}
+
+initLabelForm();
 </script>

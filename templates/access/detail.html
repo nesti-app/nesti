@@ -12,6 +12,9 @@
                     {% if scope.description %}
                     <p class="mt-1 text-sm text-gray-500">{{ scope.description }}</p>
                     {% endif %}
+                    {% if scope.allow_anonymous %}
+                    <span class="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">🌐 Публічна — доступ для анонімів</span>
+                    {% endif %}
                 </div>
                 <div class="flex gap-2">
                     <a href="/access/{{ scope.id }}/edit" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Редагувати</a>

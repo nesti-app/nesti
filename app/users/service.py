@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.exceptions import ConflictError, NotFoundError
+from app.config import get_settings
 from app.users.models import User
 from app.users.schemas import UserCreate, UserUpdate
 
@@ -46,24 +48,16 @@ async def get_user_by_id(db: AsyncSession, user_id: uuid.UUID) -> User:
     return user
 
 
-async def get_user_by_supabase_id(db: AsyncSession, supabase_id: str) -> User | None:
-    """Get a user by Supabase ID."""
-    result = await db.execute(select(User).where(User.supabase_id == supabase_id))
-    return result.scalar_one_or_none()
-
-
 async def create_user(
     db: AsyncSession,
     data: UserCreate,
-    supabase_id: str | None = None,
 ) -> User:
-    """Create a new user. supabase_id comes from Supabase Auth after invite/signup."""
+    """Create a new user."""
     existing = await db.execute(select(User).where(User.email == data.email))
     if existing.scalar_one_or_none() is not None:
         raise ConflictError("User with this email already exists")
 
     user = User(
-        supabase_id=supabase_id or str(uuid.uuid4()),
         email=data.email,
         display_name=data.display_name,
         role=data.role,
@@ -113,30 +107,69 @@ async def reactivate_user(db: AsyncSession, user_id: uuid.UUID) -> User:
     return user
 
 
-async def ensure_user_exists(
-    db: AsyncSession,
-    supabase_id: str,
-    email: str,
-) -> User:
-    """Ensure a user record exists for a Supabase Auth user. Creates if missing.
-
-    The very first user in an empty database is bootstrapped as an admin
-    (first-login bootstrap). Subsequent auto-created users default to viewer.
-    """
-    user = await get_user_by_supabase_id(db, supabase_id)
-    if user is not None:
-        return user
-
-    result = await db.execute(select(func.count()).select_from(User))
-    total = result.scalar_one()
-
-    user = User(
-        supabase_id=supabase_id,
-        email=email,
-        role="admin" if total == 0 else "viewer",
-        is_active=True,
+async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
+    """Get a user by email (case-insensitive)."""
+    result = await db.execute(
+        select(User).where(func.lower(User.email) == email.lower())
     )
-    db.add(user)
+    return result.scalar_one_or_none()
+
+
+async def set_password(db: AsyncSession, user: User, password_hash: str) -> None:
+    """Persist a password hash for the user."""
+    user.password_hash = password_hash
     await db.flush()
-    await db.refresh(user)
-    return user
+
+
+async def set_totp_secret(db: AsyncSession, user: User, secret: str) -> None:
+    """Enable 2FA for the user by storing their TOTP secret."""
+    user.totp_secret = secret
+    await db.flush()
+
+
+async def clear_totp_secret(db: AsyncSession, user: User) -> None:
+    """Disable 2FA by clearing the stored TOTP secret."""
+    user.totp_secret = None
+    await db.flush()
+
+
+def _utc_now_naive() -> datetime:
+    """Return current UTC time as a naive datetime (for SQLite compatibility)."""
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
+async def is_account_locked(
+    db: AsyncSession, user: User, *, now: datetime | None = None
+) -> bool:
+    """Return True when the account is temporarily locked due to failed logins."""
+    if user.locked_until is None:
+        return False
+    now = now or _utc_now_naive()
+    locked = (
+        user.locked_until.replace(tzinfo=None)
+        if user.locked_until.tzinfo
+        else user.locked_until
+    )
+    if locked <= now:
+        user.locked_until = None
+        await db.flush()
+        return False
+    return True
+
+
+async def register_failed_login(db: AsyncSession, user: User) -> None:
+    """Increment the failed-login counter, locking the account at the threshold."""
+    settings = get_settings()
+    user.failed_login_attempts += 1
+    if user.failed_login_attempts >= settings.login_max_attempts:
+        user.locked_until = _utc_now_naive() + timedelta(
+            seconds=settings.login_lockout_seconds
+        )
+    await db.flush()
+
+
+async def reset_login_attempts(db: AsyncSession, user: User) -> None:
+    """Reset the failed-login counter and lockout after a successful login."""
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    await db.flush()

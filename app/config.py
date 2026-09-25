@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +12,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     app_env: str = "development"
@@ -18,46 +21,44 @@ class Settings(BaseSettings):
 
     database_url: str = ""
 
-    supabase_url: str = ""
-    supabase_anon_key: str = ""
-    supabase_service_role_key: str = ""
-    supabase_jwt_secret: str = ""
-    supabase_storage_bucket: str = "inventory-images"
+    # Bootstrap admin: first-start upsert from env when using local auth.
+    admin_email: str = ""
+    admin_password: str = ""
 
-    # S3-compatible object storage (currently used to talk to Supabase Storage
-    # over its S3 API for fully async I/O via aiobotocore). When `s3_endpoint_url`
-    # is empty, the legacy synchronous supabase-py client is used instead.
-    s3_endpoint_url: str = ""
-    s3_access_key_id: str = ""
-    s3_secret_access_key: str = ""
-    s3_bucket_name: str = ""
-    s3_region: str = "us-east-1"
+    # Anti-bruteforce on login (per-account lockout + optional IP throttle).
+    login_max_attempts: int = 5
+    login_lockout_seconds: int = 900
+    ip_throttle_per_minute: int = 20
+
+    # S3-compatible object storage (any provider: Supabase Storage, rustfs,
+    # MinIO, classic AWS, ...). Standard AWS env-var names are canonical;
+    # the legacy S3_* spellings are accepted as aliases via validation_alias.
+    aws_access_key_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("AWS_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID"),
+    )
+    aws_secret_access_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("AWS_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY"),
+    )
+    aws_default_region: str = Field(
+        default="us-east-1",
+        validation_alias=AliasChoices("AWS_DEFAULT_REGION", "S3_REGION"),
+    )
+    aws_endpoint_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("AWS_ENDPOINT_URL", "S3_ENDPOINT_URL"),
+    )
+    s3_bucket_name: str = Field(default="", validation_alias="S3_BUCKET_NAME")
+    s3_force_path_style: bool = Field(default=True, validation_alias="S3_FORCE_PATH_STYLE")
 
     @property
     def s3_enabled(self) -> bool:
-        return bool(
-            self.s3_endpoint_url and self.s3_access_key_id and self.s3_secret_access_key
-        )
+        return bool(self.aws_access_key_id and self.aws_secret_access_key)
 
     @property
     def storage_bucket(self) -> str:
-        """Effective bucket name: S3 bucket when S3 is enabled, else Supabase bucket."""
-        return self.s3_bucket_name or self.supabase_storage_bucket
-
-    # Modern Supabase API keys (sb_publishable_... / sb_secret_...).
-    # Preferred over the legacy anon / service_role JWT-based keys.
-    supabase_publishable_key: str = ""
-    supabase_secret_key: str = ""
-
-    @property
-    def effective_publishable_key(self) -> str:
-        """Publishable (client-side) key, falling back to the legacy anon key."""
-        return self.supabase_publishable_key or self.supabase_anon_key
-
-    @property
-    def effective_secret_key(self) -> str:
-        """Secret (server-side) key, falling back to the legacy service_role key."""
-        return self.supabase_secret_key or self.supabase_service_role_key
+        return self.s3_bucket_name
 
     max_upload_size: int = 10_485_760
     image_max_dimension: int = 2400
@@ -75,4 +76,7 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    env_file = os.environ.get("SETTINGS_FILE", "").strip()
+    if env_file:
+        return Settings(_env_file=env_file)
     return Settings()

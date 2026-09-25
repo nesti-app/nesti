@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
+from app.access import service as access_service
 from app.access.schemas import (
     AccessScopeCreate,
     AccessScopeDetailResponse,
@@ -24,6 +25,58 @@ def test_scope_create_schema():
     data = AccessScopeCreate(name="Garage Tools", description="Tools in garage")
     assert data.name == "Garage Tools"
     assert data.description == "Tools in garage"
+
+
+def test_scope_create_anonymous_flag():
+    assert AccessScopeCreate(name="Public").allow_anonymous is False
+    assert AccessScopeCreate(name="Public", allow_anonymous=True).allow_anonymous is True
+
+
+def test_scope_update_anonymous_flag_optional():
+    assert AccessScopeUpdate().allow_anonymous is None
+    assert AccessScopeUpdate(allow_anonymous=True).allow_anonymous is True
+
+
+def test_scope_response_includes_anonymous_flag():
+    resp = AccessScopeResponse(
+        id=uuid.uuid4(),
+        name="Public Scope",
+        description=None,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        allow_anonymous=True,
+    )
+    assert resp.allow_anonymous is True
+
+
+def test_allowed_permission_anonymous_only_view():
+    assert access_service._allowed_permission(None, "view") is True
+    assert access_service._allowed_permission(None, "edit") is False
+    assert access_service._allowed_permission(None, "delete") is False
+    assert access_service._allowed_permission(uuid.uuid4(), "edit") is True
+
+
+async def test_scopes_for_user_uses_anonymous_when_none(monkeypatch):
+    calls = {"anon": 0, "user": 0}
+
+    async def fake_anon(db):
+        calls["anon"] += 1
+        return []
+
+    async def fake_user(db, uid):
+        calls["user"] += 1
+        return []
+
+    monkeypatch.setattr(access_service, "evaluate_anonymous_scopes", fake_anon)
+    monkeypatch.setattr(access_service, "evaluate_user_scopes", fake_user)
+
+    assert await access_service._scopes_for_user(None, None) == []
+    assert calls == {"anon": 1, "user": 0}
+
+
+async def test_anonymous_cannot_get_non_view_permission():
+    result = await access_service.user_has_item_permission(None, None, uuid.uuid4(), "edit")
+    assert result is False
 
 
 def test_scope_create_no_description():

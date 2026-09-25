@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import ForeignKey, Index, String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import ForeignKey, Index, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, UUIDPrimaryKeyMixin
@@ -28,8 +27,8 @@ class ItemTag(Base):
     )
 
     item_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), primary_key=True
+        Uuid, ForeignKey("items.id", ondelete="CASCADE"), primary_key=True
     )
     tag_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True
+        Uuid, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True
     )

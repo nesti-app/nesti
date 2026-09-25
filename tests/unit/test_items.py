@@ -3,10 +3,13 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
 
+from app.common.exceptions import ForbiddenError
+from app.items import routes as items_routes
 from app.items.schemas import (
     ItemAttributeCreate,
     ItemAttributeResponse,
@@ -122,3 +125,50 @@ def test_attribute_response_fields():
     )
     assert resp.name == "Color"
     assert resp.value == "Red"
+
+
+async def test_check_item_permission_anonymous_uses_none_user(monkeypatch):
+    captured = {}
+
+    async def fake_has_permission(db, user_id, item_id, permission):
+        captured["user_id"] = user_id
+        captured["permission"] = permission
+        return False
+
+    monkeypatch.setattr(
+        "app.access.service.user_has_item_permission", fake_has_permission
+    )
+
+    with pytest.raises(ForbiddenError):
+        await items_routes._check_item_permission(None, None, uuid.uuid4(), "view")
+
+    assert captured == {"user_id": None, "permission": "view"}
+
+
+async def test_check_item_permission_anonymous_grants_view(monkeypatch):
+    async def fake_has_permission(db, user_id, item_id, permission):
+        return True
+
+    monkeypatch.setattr(
+        "app.access.service.user_has_item_permission", fake_has_permission
+    )
+
+    await items_routes._check_item_permission(None, None, uuid.uuid4(), "view")
+
+
+async def test_get_user_item_filters_anonymous(monkeypatch):
+    async def fake_anon(db):
+        return []
+
+    monkeypatch.setattr("app.access.service.evaluate_anonymous_scopes", fake_anon)
+
+    filters = await items_routes._get_user_item_filters(None, None)
+    # No public scopes → nothing is visible, not everything.
+    assert len(filters) == 1
+    assert type(filters[0]).__name__ == "False_"
+
+
+async def test_get_user_item_filters_admin_is_unfiltered():
+    admin = SimpleNamespace(role="admin", id=uuid.uuid4())
+    filters = await items_routes._get_user_item_filters(None, admin)
+    assert filters is None
