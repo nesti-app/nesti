@@ -253,24 +253,17 @@ git push -u origin main
 
 ### 3. Configure Vercel
 
-Create `vercel.json` in the project root (if not already present):
+Ніякої конфігурації не потрібно — Vercel визначає FastAPI автоматично (zero-config):
 
-```json
-{
-  "builds": [
-    {
-      "src": "app/main.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "app/main.py"
-    }
-  ]
-}
-```
+- entrypoint `app/main.py` експортує верхньорівневу змінну `app` — це підтримуваний entrypoint;
+- залежності беруться з `pyproject.toml` / `uv.lock`.
+
+У репозиторії лишається мінімальний `vercel.json` (лише `$schema`) для необхідних
+override — наприклад `functions` або `excludeFiles`.
+
+> ⚠️ Не додавай legacy-блок `builds` / `routes` з `use: "@vercel/python"`.
+> Він конфліктує з нативним Python-рантаймом Vercel і ламає збірку:
+> `ImportError: cannot import name 'vc_handler' from 'vercel_runtime.vc_init'`.
 
 ### 4. Set Environment Variables
 
