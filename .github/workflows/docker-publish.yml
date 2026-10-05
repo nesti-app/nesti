@@ -1,0 +1,132 @@
+name: Publish Docker image
+
+# Builds the Nesti image and pushes it to GitHub Container Registry.
+# Configuration is NOT baked into the image — every setting is read from the
+# environment at container start (see README "Environment Variables").
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Verify the build without publishing to the registry'
+        type: boolean
+        required: false
+        default: false
+      tag:
+        description: 'Extra tag to publish, e.g. "stable" or "v1.2.3". Leave empty for defaults.'
+        type: string
+        required: false
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    # Kill switch. Set the DEPLOY_ENABLED repository variable to "false" in
+    # Settings -> Secrets and variables -> Actions -> Variables and the whole
+    # job is skipped, so neither Actions minutes nor registry storage are
+    # spent. Unset or any other value means publishing is enabled — a missing
+    # variable must never silently stop deployments.
+    if: ${{ vars.DEPLOY_ENABLED != 'false' && vars.DEPLOY_ENABLED != '0' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Buildx is required for the type=gha layer cache below; the default
+      # builder cannot read or write the Actions cache.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # Decides once, here, whether this run is allowed to publish. Every
+      # publishing step keys off the single output below so the conditions
+      # cannot drift apart.
+      - name: Decide whether to publish
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          DEPLOY_ENABLED: ${{ vars.DEPLOY_ENABLED }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "pull_request" ]; then
+            reason="pull request — build only"
+          elif [ "$DRY_RUN" = "true" ]; then
+            reason="dry_run requested — build only"
+          else
+            reason="publishing"
+          fi
+          echo "push=$([ "$reason" = "publishing" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "DEPLOY_ENABLED=${DEPLOY_ENABLED:-<unset, publishing enabled>}"
+          echo "Decision: $reason"
+
+      - name: Log in to GHCR
+        if: steps.gate.outputs.push == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          # GITHUB_TOKEN already carries packages: write for this repo.
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=main,enable={{is_default_branch}}
+            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+            type=sha,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: ${{ steps.gate.outputs.push == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          # Skip provenance/SBOM attestations: they add extra manifests in the
+          # registry that some clients (notably podman) handle poorly.
+          provenance: false
+          sbom: false
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Container image"
+            echo ""
+            if [ "${{ steps.gate.outputs.push }}" = "true" ]; then
+              echo "Published to \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`."
+            else
+              echo "Built but **not published** (nothing was pushed to the registry)."
+            fi
+            echo ""
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
