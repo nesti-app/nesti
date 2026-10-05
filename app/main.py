@@ -60,6 +60,11 @@ class UserContextMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_logging()
     settings = get_settings()
+    if not settings.has_usable_secret_key:
+        logger.warning(
+            "SECRET_KEY is not configured — using a temporary random key. "
+            "Sessions will be invalidated on every restart. Set SECRET_KEY in your .env."
+        )
     logger.info("Starting application (env=%s)", settings.app_env)
     if settings.database_url:
         from app.db.migrate import run_migrations

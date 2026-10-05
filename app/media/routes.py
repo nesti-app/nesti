@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.access.service import user_has_item_permission
 from app.common.exceptions import ForbiddenError
 from app.db.engine import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_optional_user
 from app.media.models import ItemImage
 from app.media.service import (
     delete_image,
@@ -32,6 +32,24 @@ async def _check_manage_images(
     has = await user_has_item_permission(db, user.id, item_id, "manage_images")
     if not has:
         raise ForbiddenError("You do not have permission to manage images")
+
+
+async def _check_view_image(
+    db: AsyncSession,
+    user: User | None,
+    item_id: uuid.UUID,
+) -> None:
+    """Gate raw image bytes on the same ``view`` permission as the item page.
+
+    Anonymous visitors pass when the item is in a public scope, which is what
+    item_detail() already renders for them.
+    """
+    if user is not None and user.role == "admin":
+        return
+    user_id = user.id if user is not None else None
+    has = await user_has_item_permission(db, user_id, item_id, "view")
+    if not has:
+        raise ForbiddenError("You do not have permission to view this image")
 
 
 @router.post("")
@@ -108,11 +126,14 @@ async def reorder_item_images(
 async def serve_image_file(
     item_id: uuid.UUID,
     image_id: uuid.UUID,
+    user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     from sqlalchemy import select
 
     from app.media.storage import get_storage_backend
+
+    await _check_view_image(db, user, item_id)
 
     result = await db.execute(
         select(ItemImage).where(ItemImage.id == image_id, ItemImage.item_id == item_id)

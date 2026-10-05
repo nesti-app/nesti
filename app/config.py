@@ -1,10 +1,57 @@
 from __future__ import annotations
 
+import logging
 import os
+import secrets
 from functools import lru_cache
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
+
+# Session cookies are HS256 JWTs, so SECRET_KEY is the only thing separating
+# "signed by this server" from "signed by anyone". Anything short or obviously
+# a placeholder is treated as unusable.
+MIN_SECRET_KEY_LENGTH = 32
+
+WEAK_SECRET_KEYS = frozenset(
+    {
+        "secret",
+        "secretkey",
+        "secret_key",
+        "changeme",
+        "change-me",
+        "change_me",
+        "password",
+        "supersecret",
+        "super-secret",
+        "insecure",
+        "nesti",
+        "dev",
+        "development",
+        "test",
+        "testing",
+        "placeholder",
+        "example",
+        "your-secret-key",
+    }
+)
+
+
+def _is_repeated_pattern(key: str, max_unit: int = 16) -> bool:
+    """Detect keys that are one short chunk repeated, e.g. ``changemechangeme…``.
+
+    Padding a placeholder out to the minimum length must not make it acceptable.
+    A real random token is never periodic over such a short unit.
+    """
+    for size in range(1, max_unit + 1):
+        if len(key) < size * 2 or len(key) % size:
+            continue
+        unit = key[:size]
+        if unit * (len(key) // size) == key:
+            return True
+    return False
 
 
 class Settings(BaseSettings):
@@ -73,10 +120,46 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.app_env == "production"
 
+    @property
+    def has_usable_secret_key(self) -> bool:
+        """True when SECRET_KEY is long enough and not a known placeholder."""
+        key = self.secret_key.strip()
+        if len(key) < MIN_SECRET_KEY_LENGTH:
+            return False
+        if key.lower() in WEAK_SECRET_KEYS:
+            return False
+        return not _is_repeated_pattern(key)
+
+    def resolve_secret_key(self) -> str:
+        """Return a signing key that is safe to use for session tokens.
+
+        In production an unusable SECRET_KEY is a hard error: the app must
+        refuse to start rather than sign sessions with a predictable secret.
+        Elsewhere a random per-process key is generated so local development
+        still works, with a warning — that key dies with the process, so
+        sessions do not survive a restart.
+        """
+        if self.has_usable_secret_key:
+            return self.secret_key
+
+        if self.is_production:
+            raise RuntimeError(
+                "SECRET_KEY is missing, too short, or a placeholder. "
+                f"Set SECRET_KEY to a random value of at least {MIN_SECRET_KEY_LENGTH} "
+                'characters, e.g. python -c "import secrets; print(secrets.token_urlsafe(64))"'
+            )
+
+        logger.warning(
+            "SECRET_KEY is missing, too short, or a placeholder; generating a temporary "
+            "random key. All sessions will be invalidated on restart. Set SECRET_KEY in "
+            "your .env to keep sessions across restarts."
+        )
+        return secrets.token_urlsafe(64)
+
 
 @lru_cache
 def get_settings() -> Settings:
     env_file = os.environ.get("SETTINGS_FILE", "").strip()
-    if env_file:
-        return Settings(_env_file=env_file)
-    return Settings()
+    settings = Settings(_env_file=env_file) if env_file else Settings()
+    settings.secret_key = settings.resolve_secret_key()
+    return settings

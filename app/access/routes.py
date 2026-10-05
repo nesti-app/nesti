@@ -53,7 +53,11 @@ async def access_list(
 
 
 @router.get("/search/locations/json")
-async def locations_search(q: str = "", db: AsyncSession = Depends(get_db)) -> list[dict]:
+async def locations_search(
+    q: str = "",
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
     from app.locations.models import Location
 
     query = select(Location).options(selectinload(Location.parent)).order_by(Location.name)
@@ -73,7 +77,11 @@ async def locations_search(q: str = "", db: AsyncSession = Depends(get_db)) -> l
 
 
 @router.get("/search/categories/json")
-async def categories_search(q: str = "", db: AsyncSession = Depends(get_db)) -> list[dict]:
+async def categories_search(
+    q: str = "",
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
     from app.categories.models import Category
 
     query = select(Category).options(selectinload(Category.parent)).order_by(Category.name)
@@ -93,7 +101,11 @@ async def categories_search(q: str = "", db: AsyncSession = Depends(get_db)) -> 
 
 
 @router.get("/search/tags/json")
-async def tags_search(q: str = "", db: AsyncSession = Depends(get_db)) -> list[dict]:
+async def tags_search(
+    q: str = "",
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
     from app.tags.models import Tag
 
     query = select(Tag).order_by(Tag.name)
@@ -106,7 +118,11 @@ async def tags_search(q: str = "", db: AsyncSession = Depends(get_db)) -> list[d
 
 
 @router.get("/search/items/json")
-async def items_search(q: str = "", db: AsyncSession = Depends(get_db)) -> list[dict]:
+async def items_search(
+    q: str = "",
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
     from app.items.models import Item
 
     query = select(Item).order_by(Item.name)
@@ -126,7 +142,11 @@ async def items_search(q: str = "", db: AsyncSession = Depends(get_db)) -> list[
 
 
 @router.get("/users/json")
-async def users_search(q: str = "", db: AsyncSession = Depends(get_db)) -> list[dict]:
+async def users_search(
+    q: str = "",
+    user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
     query = select(User).order_by(User.email)
     if q:
         query = query.where(

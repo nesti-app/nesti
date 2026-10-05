@@ -178,7 +178,7 @@ Config resolution order: **real environment variables > settings file > code def
 |---|---|---|---|
 | `APP_ENV` | No | `development` | `development` or `production` |
 | `APP_URL` | No | `http://localhost:8000` | Application base URL |
-| `SECRET_KEY` | **Yes** | — | Random secret for JWT session signing. Generate: `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
+| `SECRET_KEY` | **Yes** | — | Random secret for JWT session signing. Generate: `python -c "import secrets; print(secrets.token_urlsafe(64))"`. Must be ≥ 32 chars and not a placeholder — `APP_ENV=production` refuses to start otherwise (in development a temporary random key is generated and all sessions reset on restart) |
 | `DATABASE_URL` | No | `sqlite+aiosqlite:///./data/nesti.db` | Database URL. PostgreSQL: `postgresql+asyncpg://...`. SQLite: `sqlite+aiosqlite:///...` |
 | `SETTINGS_FILE` | No | `.env` | Path to env-file for config. Real env vars always take precedence |
 | `ADMIN_EMAIL` | No | — | Bootstrap admin email (created on startup if no user with this email exists) |
